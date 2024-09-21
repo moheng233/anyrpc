@@ -1,0 +1,10 @@
+{
+    "private": true,
+    "scripts": {
+        "build": "cd lib && pnpm build"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "1.9.2",
+        "automd": "^0.3.8"
+    }
+}

@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig.app.json",
+	"references": [
+		{
+			"path": "../common"
+		}
+	],
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext"
+	}
+}
