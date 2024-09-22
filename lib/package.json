@@ -1,12 +1,13 @@
 {
-	"name": "anyrpc",
+	"name": "@moheng/anyrpc",
 	"version": "1.0.1",
 	"description": "",
 	"main": "index.js",
 	"type": "module",
 	"scripts": {
 		"build": "tsc -b",
-		"watch": "tsc -b -w"
+		"watch": "tsc -b -w",
+		"prepublish": "pnpm build"
 	},
 	"keywords": [],
 	"author": "",

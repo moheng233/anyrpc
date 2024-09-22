@@ -5,7 +5,7 @@
     "build": "vite build && vite build --ssr"
   },
   "dependencies": {
-    "anyrpc": "workspace:",
+    "@moheng/anyrpc": "workspace:",
     "cross-env": "^7.0.3",
     "express": "^5.0.0",
     "ofetch": "^1.4.0",
