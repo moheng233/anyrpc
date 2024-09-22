@@ -15,7 +15,9 @@ export interface EventSourceMessage {
 	retry?: number;
 }
 
-export function createSSETransformStream<O extends {}>() {
+export function createSSETransformStream<O extends {}>(
+	parser?: (json: string) => O,
+) {
 	let onChunk: ReturnType<typeof getLines>;
 
 	return new TransformStream<Uint8Array, SSEMessage<O>>({
@@ -26,7 +28,8 @@ export function createSSETransformStream<O extends {}>() {
 					(_retry) => {},
 					({ data, ...opts }) => {
 						controller.enqueue({
-							data: JSON.parse(data) as O,
+							data:
+								parser !== undefined ? parser(data) : (JSON.parse(data) as O),
 							...opts,
 						});
 					},

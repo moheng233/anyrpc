@@ -1,6 +1,6 @@
 import { defineSSE } from "anyrpc/server";
 
-export const hello = defineSSE<string, undefined>(async (ev, args) => {
+export const hello = defineSSE<string, {}>(async (ev, args) => {
     console.log('test')
     let count = 0
 

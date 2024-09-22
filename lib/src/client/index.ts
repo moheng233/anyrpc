@@ -1,30 +1,68 @@
 import { ofetch } from "ofetch";
 import { resolveURL, stringifyQuery } from "ufo";
+import * as Namespace from "typia/lib/functional/Namespace";
 
-import type { RPCFunction, RPCSSEFunction } from "../common/types";
+import type {
+	DefineOption,
+	DefineSSEOption,
+	RPCFunction,
+	RPCSSEFunction,
+} from "../common/types";
 import { createSSETransformStream } from "./sse";
 
-export function rpc<P, R>(path: string, method: string): RPCFunction<P, R> {
-	return async (args) => {
-		return ofetch<R>(resolveURL("/__rpc", `${path}@${method}`), {
-			method: "POST",
-            responseType: "json",
-			body: JSON.stringify(args),
-		});
-	};
-}
-
-export function rpcSSE<S extends {}, P>(
+function rpc<P, R>(
 	path: string,
 	method: string,
-): RPCSSEFunction<S, P> {
-	return async (args) => {
-		const stream = await ofetch(resolveURL("/__rpc", `${path}@${method}`), {
-			method: "POST",
-			responseType: "stream",
-			body: JSON.stringify(args),
-		});
-
-		return stream.pipeThrough(createSSETransformStream<S>());
-	};
+	option?: DefineOption<P, R>,
+): RPCFunction<P, R> {
+	return Object.assign(
+		async (args: P) => {
+			return ofetch<R>(resolveURL("/__rpc", `${path}@${method}`), {
+				method: "POST",
+				responseType: "json",
+				body:
+					option !== undefined
+						? option.argsStringify(args)
+						: JSON.stringify(args),
+				parseResponse(responseText) {
+					return option !== undefined
+						? option.returnPaser(responseText)
+						: JSON.parse(responseText);
+				},
+			});
+		},
+		{
+			option: option,
+		},
+	);
 }
+
+const rpcPure = Object.assign(rpc, Namespace.json.stringify("rpc"), Namespace.assert("rpc"));
+export { rpcPure as rpc };
+
+function rpcSSE<S extends {}, P>(
+	path: string,
+	method: string,
+	option?: DefineSSEOption<S, P>,
+): RPCSSEFunction<S, P> {
+	return Object.assign(
+		async (args: P) => {
+			const stream = await ofetch(resolveURL("/__rpc", `${path}@${method}`), {
+				method: "POST",
+				responseType: "stream",
+				body:
+					option !== undefined
+						? option.argsStringify(args)
+						: JSON.stringify(args),
+			});
+
+			return stream.pipeThrough(createSSETransformStream<S>(option?.ssePaser));
+		},
+		{
+			option: option,
+		},
+	);
+}
+
+const rpcSSEPure = Object.assign(rpcSSE, Namespace.json.stringify("rpcSSE"), Namespace.assert("rpcSSE"));
+export { rpcSSEPure as rpcSSE };

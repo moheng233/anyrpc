@@ -6,8 +6,8 @@ import inspect from "vite-plugin-inspect";
 
 export default defineConfig({
 	plugins: [
-		anyrpc(),
 		inspect(),
+		anyrpc(),
 		{
 			name: "splie",
 			configResolved(config) {

@@ -1,15 +1,27 @@
 import assert from "node:assert";
 import { glob } from "node:fs/promises";
-import path, { join } from "node:path";
+import path, { join, resolve } from "pathe";
 
-import { ModuleKind, ModuleResolutionKind, Node, Project } from "ts-morph";
+import {
+	type CallExpression,
+	ModuleKind,
+	ModuleResolutionKind,
+	Node,
+	Project,
+	type Type,
+	VariableDeclarationKind,
+} from "ts-morph";
 import { type Plugin, createFilter } from "vite";
 
 import { assertPosixPath } from "../common/assert.js";
 import { exists } from "../common/fs.js";
 import { createMiddlewares } from "./middlewares.js";
+import { transformRPCFile } from "./transform.js";
 
 const filter = createFilter("**/*.rpc.ts");
+
+const virtualRPCManifestModuleId = "virtual:anyrpc/manifest.js";
+const resolvedVirtualRPCManifestModuleId = `\0${virtualRPCManifestModuleId}`;
 
 export default function anyrpc(): Plugin {
 	let rootDir: string;
@@ -46,81 +58,50 @@ export default function anyrpc(): Plugin {
 				},
 			};
 		},
+		resolveId(source, importer, options) {
+			if (source === virtualRPCManifestModuleId) {
+				return resolvedVirtualRPCManifestModuleId;
+			}
+		},
 		async configurePreviewServer(server) {
-			server.middlewares.use("/__rpc", createMiddlewares("preview", server.config.root));
+			server.middlewares.use(
+				"/__rpc",
+				createMiddlewares("preview", server.config.root),
+			);
 		},
 		async configureServer(server) {
 			server.middlewares.use("/__rpc", createMiddlewares("dev", server));
 		},
-		async transform(code, id, options) {
-			const isServer = options?.ssr === true;
+		async load(id, options) {
+			const ssr = options?.ssr === true;
 
-			if (!filter(id)) {
-				return;
-			}
+			if (id === resolvedVirtualRPCManifestModuleId) {
+				const rpcModules = (await Array.fromAsync(glob(join(rootDir, "**", "*.rpc.ts")))).map(p => path.relative(rootDir, p));
 
-			const typeChecker = project.getTypeChecker();
+				const source = project.createSourceFile(join(rootDir, "manifest.js"), "", { overwrite: true });
 
-			const source = project.createSourceFile(id, code, { overwrite: true });
-
-			source.addImportDeclaration({
-				moduleSpecifier: "anyrpc/client",
-				namedImports: ["rpc", "rpcSSE"],
-			});
-
-			for (const [name, exported] of source.getExportedDeclarations()) {
-				for (const declaration of exported) {
-					if (Node.isVariableDeclaration(declaration)) {
-						const initializer = declaration.getInitializer();
-						if (Node.isCallExpression(initializer)) {
-							const signature = typeChecker.getResolvedSignature(initializer);
-							const signatureDeclaration = signature?.getDeclaration();
-
-							if (Node.isFunctionDeclaration(signatureDeclaration)) {
-								const declarationName = signatureDeclaration.getName();
-								const declarationPath = signatureDeclaration
-									.getSourceFile()
-									.getFilePath();
-
-								if (declarationPath !== undefined) {
-									if (
-										declarationPath.includes(
-											path.join(
-												"anyrpc",
-												"lib",
-												"dist",
-												"server",
-												"macro.d.ts",
-											),
-										)
-									) {
-										if (!isServer) {
-											let useMacro: string | undefined = undefined;
-
-											switch (declarationName) {
-												case "define":
-													useMacro = "rpc";
-													break;
-												case "defineSSE":
-													useMacro = "rpcSSE";
-													break;
-											}
-
-											if (useMacro !== undefined) {
-												declaration.setInitializer(
-													`${useMacro}("${path.relative(rootDir, id)}", "${name}")`,
-												);
-											}
-										}
-									}
-								}
-							}
+				source.addVariableStatement({
+					isExported: true,
+					declarationKind: VariableDeclarationKind.Const,
+					declarations: [
+						{
+							name: "manifest",
+							initializer: `{${rpcModules.map(e => `"${e}": import("../${e}"),`)}}`
 						}
-					}
-				}
-			}
+					]
+				});
 
-			return source.getText(true);
+				return source.getFullText();
+			}
+		},
+		async transform(code, id, options) {
+			const ssr = options?.ssr === true;
+
+			if (filter(id)) {
+				const source = project.createSourceFile(id, code, { overwrite: true });
+				transformRPCFile(project, source, { rootDir, ssr });
+				return source.getFullText();
+			}
 		},
 	};
 }

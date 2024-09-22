@@ -63,7 +63,7 @@ import { define, defineSSE } from "anyrpc/server";
 ```ts hello.rpc.ts
 import { defineSSE } from "anyrpc/server";
 
-export const hello = defineSSE<string, undefined>(async (ev, args) => {
+export const hello = defineSSE<string, {}>(async (ev, args) => {
     console.log('test')
     let count = 0
 
@@ -94,7 +94,7 @@ export const hello = defineSSE<string, undefined>(async (ev, args) => {
 ```ts index.ts
 import { hello } from './hello.rpc'
 
-const gen = await hello(undefined)
+const gen = await hello({})
 const writable = gen.pipeTo(
   new WritableStream({
     abort(reason) {
@@ -132,9 +132,9 @@ const writable = gen.pipeTo(
 
 Create a generic middleware
 
-### `define(fun)`
+### `define()`
 
-### `defineSSE(fun)`
+### `defineSSE()`
 
 <!-- /automd -->
 

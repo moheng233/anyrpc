@@ -1,21 +1,41 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { joinRelativeURL, parseFilename, withoutBase } from "ufo";
-import type { Connect, PreviewServer, ViteDevServer } from "vite";
+import { parseFilename, withoutBase } from "ufo";
+import type { Connect, ViteDevServer } from "vite";
 
+import assert from "node:assert";
+import { join } from "pathe";
 import type { SSEMessage } from "../common/sse.js";
+import type {
+	DefineOption,
+	DefineSSEOption,
+	RPCFunction,
+	RPCModule,
+	RPCSSEFunction,
+} from "../common/types.js";
 import { formatSSEMessage } from "./util/sse.js";
-import { join, resolve, normalize } from "node:path";
 
 type Handle = (
 	req: Connect.IncomingMessage,
 	res: ServerResponse<IncomingMessage>,
 ) => PromiseLike<void>;
 
-export function createMiddlewares(
-	mode: "preview",
-    rootDir: string
-): Handle;
+function getBody(request: Connect.IncomingMessage): Promise<string> {
+	return new Promise((resolve) => {
+		const bodyParts: Uint8Array[] = [];
+		let body: string;
+		request
+			.on("data", (chunk) => {
+				bodyParts.push(chunk);
+			})
+			.on("end", () => {
+				body = Buffer.concat(bodyParts).toString();
+				resolve(body);
+			});
+	});
+}
+
+export function createMiddlewares(mode: "preview", rootDir: string): Handle;
 export function createMiddlewares(mode: "dev", server: ViteDevServer): Handle;
 /**
  * Create a generic middleware
@@ -32,9 +52,11 @@ export function createMiddlewares(
 
 		const [filepath, method] = url.split("@");
 
-		try {
-			let module: Record<string, Function>;
+		const body = await getBody(req);
 
+		let module: RPCModule;
+
+		try {
 			if (mode === "dev") {
 				module = await (server as ViteDevServer).ssrLoadModule(filepath);
 			} else {
@@ -47,91 +69,114 @@ export function createMiddlewares(
 					)
 				);
 			}
+		} catch (e) {
+			res.writeHead(404);
+			res.end();
+			return;
+		}
 
-			let ret: any;
+		let rpc: RPCFunction<object, object> | RPCSSEFunction<object, object>;
+		let option:
+			| DefineOption<object, object>
+			| DefineSSEOption<object, object>
+			| undefined;
+
+		try {
+			rpc = module[method];
+			option = rpc.option;
+		} catch {
+			res.writeHead(404);
+			res.end();
+			return;
+		}
+
+		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+		let ret: any;
+
+		try {
+			assert(option !== undefined && option.argsPaser !== undefined);
+
+			ret = await rpc(option.argsPaser(body));
+		} catch (e) {
+			res.writeHead(500);
+			res.end(JSON.stringify(e));
+			return;
+		}
+
+		if (ret instanceof ReadableStream) {
+			res.writeHead(200, {
+				"Cache-Control": "no-cache",
+				Connection: "keep-alive",
+				"Content-Type": "text/event-stream",
+			});
+			res.flushHeaders();
+
+			const transform = new TransformStream<SSEMessage<object>, string>({
+				transform({ data, ...sse }, controller) {
+					controller.enqueue(
+						formatSSEMessage({
+							data:
+								option !== undefined
+									// biome-ignore lint/complexity/noBannedTypes: <explanation>
+									? (option as DefineSSEOption<{}, {}>).sseStringify(data)
+									: JSON.stringify(data),
+							...sse,
+						}),
+					);
+				},
+			});
+			ret.pipeTo(transform.writable);
 
 			try {
-				ret = await module[method]();
-			} catch (e) {
-				console.error(e);
-			}
-
-			if (ret instanceof ReadableStream) {
-				res.writeHead(200, {
-					"Cache-Control": "no-cache",
-					Connection: "keep-alive",
-					"Content-Type": "text/event-stream",
-				});
-				res.flushHeaders();
-
-				const transform = new TransformStream<SSEMessage<object>, string>({
-					transform({ data, ...option }, controller) {
-						controller.enqueue(
-							formatSSEMessage({
-								data: JSON.stringify(data),
-								...option,
-							}),
-						);
-					},
-				});
-				ret.pipeTo(transform.writable);
-
-				try {
-					transform.readable.pipeTo(
-						new WritableStream<string>({
-							async write(chunk, controller) {
-								try {
-									if (!res.closed) {
-										return await new Promise<void>((done, rej) => {
-											res.write(chunk, (error) => {
-												if (error !== undefined && error !== null) {
-													rej(error);
-												}
-												done();
-											});
-										});
-									}
-									controller.error("closed");
+				transform.readable.pipeTo(
+					new WritableStream<string>({
+						async write(chunk, controller) {
+							try {
+								if (!res.closed) {
 									return await new Promise<void>((done, rej) => {
-										console.log("closed");
-										res.end(() => {
+										res.write(chunk, (error) => {
+											if (error !== undefined && error !== null) {
+												rej(error);
+											}
 											done();
 										});
 									});
-								} catch (error) {
-									controller.error(error);
 								}
-							},
-							abort(error) {
-								console.log(error);
-							},
-							async close() {
+								controller.error("closed");
 								return await new Promise<void>((done, rej) => {
 									console.log("closed");
 									res.end(() => {
 										done();
 									});
 								});
-							},
-						}),
-					);
-				} catch (e) {
-					console.error(e);
-				}
-			} else {
-				const content = JSON.stringify(ret);
-				res
-					.writeHead(200, {
-						"Content-Type": "text/plain",
-						"Content-Length": Buffer.byteLength(content),
-					})
-					.end(content);
+							} catch (error) {
+								controller.error(error);
+							}
+						},
+						abort(error) {
+							console.log(error);
+						},
+						async close() {
+							return await new Promise<void>((done, rej) => {
+								console.log("closed");
+								res.end(() => {
+									done();
+								});
+							});
+						},
+					}),
+				);
+			} catch (e) {
+				console.error(e);
 			}
-		} catch (e) {
-			console.error(e);
-
-			res.writeHead(404);
-			res.end();
+		} else {
+			const content = JSON.stringify(ret);
+			res
+				.writeHead(200, {
+					"Content-Type": "text/plain",
+					"Content-Length": Buffer.byteLength(content),
+				})
+				.end(content);
 		}
 	};
 }

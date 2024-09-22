@@ -1,44 +1,48 @@
 {
-  "name": "anyrpc",
-  "version": "1.0.1",
-  "description": "",
-  "main": "index.js",
-  "type": "module",
-  "scripts": {
-    "build": "tsc -b",
-    "watch": "tsc -b -w"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "publishConfig": {},
-  "devDependencies": {
-    "@biomejs/biome": "*",
-    "@types/node": "^22.5.5",
-    "typescript": "^5.6.2"
-  },
-  "dependencies": {
-    "@brillout/json-serializer": "^0.5.13",
-    "ofetch": "^1.4.0",
-    "ts-morph": "^23.0.0",
-    "ufo": "^1.5.4",
-    "vite": "^5.4.7"
-  },
-  "exports": {
-    "./server": {
-      "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.js",
-      "default": "./dist/server/index.js"
-    },
-    "./vite": {
-      "types": "./dist/server/vite.d.ts",
-      "import": "./dist/server/vite.js",
-      "default": "./dist/server/vite.js"
-    },
-    "./client": {
-      "types": "./dist/client/index.d.ts",
-      "import": "./dist/client/index.js",
-      "default": "./dist/client/index.js"
-    }
-  }
+	"name": "anyrpc",
+	"version": "1.0.1",
+	"description": "",
+	"main": "index.js",
+	"type": "module",
+	"scripts": {
+		"build": "tsc -b",
+		"watch": "tsc -b -w"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"publishConfig": {},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.2",
+		"@types/node": "^22.5.5",
+		"typescript": "^5.6.2"
+	},
+	"dependencies": {
+		"ofetch": "^1.4.0",
+		"pathe": "^1.1.2",
+		"ts-morph": "^23.0.0",
+		"typia": "^6.10.2",
+		"ufo": "^1.5.4",
+		"vite": "^5.4.7"
+	},
+	"exports": {
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
+		},
+		"./vite": {
+			"types": "./dist/server/vite.d.ts",
+			"import": "./dist/server/vite.js",
+			"default": "./dist/server/vite.js"
+		},
+		"./client": {
+			"types": "./dist/client/index.d.ts",
+			"import": "./dist/client/index.js",
+			"default": "./dist/client/index.js"
+		}
+	},
+	"peerDependencies": {
+		"typia": "^6.10.2"
+	}
 }
