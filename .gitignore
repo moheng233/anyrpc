@@ -133,3 +133,6 @@ dist
 
 # Cloudflare
 .wrangler/
+
+docs/.vitepress/cache/
+docs/.vitepress/dist/
