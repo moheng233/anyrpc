@@ -1,16 +1,12 @@
 # AnyRPC
 
-<!-- automd:badges color="yellow" license name="anyrpc" codecov bundlephobia packagephobia -->
+<!-- automd:badges color="yellow" license name="@moheng/anyrpc" codecov bundlephobia packagephobia -->
 
-[![npm version](https://img.shields.io/npm/v/anyrpc?color=yellow)](https://npmjs.com/package/anyrpc)
-[![npm downloads](https://img.shields.io/npm/dm/anyrpc?color=yellow)](https://npmjs.com/package/anyrpc)
-[![bundle size](https://img.shields.io/bundlephobia/minzip/anyrpc?color=yellow)](https://bundlephobia.com/package/anyrpc)
+[![npm version](https://img.shields.io/npm/v/@moheng/anyrpc?color=yellow)](https://npmjs.com/package/@moheng/anyrpc)
+[![npm downloads](https://img.shields.io/npm/dm/@moheng/anyrpc?color=yellow)](https://npmjs.com/package/@moheng/anyrpc)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@moheng/anyrpc?color=yellow)](https://bundlephobia.com/package/@moheng/anyrpc)
 
 <!-- /automd -->
-
-[![Formatted with Biome](https://img.shields.io/badge/Formatted_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev/)
-[![Linted with Biome](https://img.shields.io/badge/Linted_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
-[![Checked with Biome](https://img.shields.io/badge/Checked_with-Biome-60a5fa?style=flat&logo=biome)](https://biomejs.dev)
 
 <!-- automd:contributors author="moheng233" github="moheng233/anyrpc" license="MIT" -->
 
@@ -25,47 +21,47 @@ Made by [@moheng233](https://github.com/moheng233) and [community](https://githu
 
 ## Install
 
-<!-- automd:pm-install name="anyrpc" -->
+<!-- automd:pm-install name="@moheng/anyrpc" -->
 
 ```sh
 # ✨ Auto-detect
-npx nypm install anyrpc
+npx nypm install @moheng/anyrpc
 
 # npm
-npm install anyrpc
+npm install @moheng/anyrpc
 
 # yarn
-yarn add anyrpc
+yarn add @moheng/anyrpc
 
 # pnpm
-pnpm install anyrpc
+pnpm install @moheng/anyrpc
 
 # bun
-bun install anyrpc
+bun install @moheng/anyrpc
 ```
 
 <!-- /automd -->
 
-<!-- automd:jsimport name="anyrpc/server" imports="define,defineSSE" -->
+<!-- automd:jsimport name="@moheng/anyrpc/server" imports="define,defineSSE" -->
 
 **ESM** (Node.js, Bun)
 
 ```js
-import { define, defineSSE } from "anyrpc/server";
+import { define, defineSSE } from "@moheng/anyrpc/server";
 ```
 
 <!-- /automd -->
 
 ## Quick Start
 
-<!-- automd:file src="examples/vite/hello.rpc.ts" name="hello.rpc.ts" code lang="ts" -->
+<!-- automd:file src="examples/vite/src/hello.rpc.ts" name="hello.rpc.ts" code lang="ts" -->
 
 ```ts hello.rpc.ts
-import { defineSSE } from "@moheng/anyrpc/server";
+import { define, defineSSE, SSEMessageEmit } from "@moheng/anyrpc/server";
 
-export const hello = defineSSE<string, {}>(async (ev, args) => {
+export const hello = defineSSE(async (ev: SSEMessageEmit<string>, start: number, end: number) => {
 	console.log("test");
-	let count = 0;
+	let count = start;
 
 	const interval = setInterval(async () => {
 		try {
@@ -73,7 +69,7 @@ export const hello = defineSSE<string, {}>(async (ev, args) => {
 			await ev.emit(data, { id: count.toString() });
 			console.log(data);
 			count += 1;
-			if (count > 20) {
+			if (count >= end) {
 				clearInterval(interval);
 				ev.close();
 			}
@@ -85,16 +81,20 @@ export const hello = defineSSE<string, {}>(async (ev, args) => {
 	}, 1000);
 });
 
+export const test = define(async (e: string) => {
+
+});
+
 ```
 
 <!-- /automd -->
 
-<!-- automd:file src="examples/vite/index.ts" name="index.ts" code lang="ts" -->
+<!-- automd:file src="examples/vite/src/index.ts" name="index.ts" code lang="ts" -->
 
 ```ts index.ts
 import { hello } from './hello.rpc'
 
-const gen = await hello({})
+const gen = await hello(0, 50)
 const writable = gen.pipeTo(
   new WritableStream({
     abort(reason) {
@@ -135,6 +135,8 @@ Create a generic middleware
 ### `define()`
 
 ### `defineSSE()`
+
+### `SSEMessageEmit()`
 
 ### `useContext()`
 
