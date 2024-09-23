@@ -1,8 +1,6 @@
 import type { SSEMessage, SSEMessageOption } from "../../common/sse.js";
 
-export { SSEMessageEmit, formatSSEMessage, formatSSEMessages }
-
-class SSEMessageEmit<O extends {}> {
+export class SSEMessageEmit<O> {
   private readonly _writer: WritableStreamDefaultWriter<SSEMessage<O>>
 
   constructor(
@@ -27,7 +25,7 @@ class SSEMessageEmit<O extends {}> {
   }
 }
 
-function formatSSEMessage<O extends {}>(message: SSEMessage<O>): string {
+export function formatSSEMessage(message: SSEMessage<string>): string {
   let result = '';
   if (message.id) {
     result += `id: ${message.id}\n`;
@@ -39,13 +37,5 @@ function formatSSEMessage<O extends {}>(message: SSEMessage<O>): string {
     result += `retry: ${message.retry}\n`;
   }
   result += `data: ${message.data}\n\n`;
-  return result;
-}
-
-function formatSSEMessages<O extends {}>(messages: SSEMessage<O>[]): string {
-  let result = '';
-  for (const msg of messages) {
-    result += formatSSEMessage(msg);
-  }
   return result;
 }

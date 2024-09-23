@@ -1,10 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-import { parseFilename, withoutBase } from "ufo";
+import { withoutBase } from "ufo";
 import type { Connect, ViteDevServer } from "vite";
 
 import assert from "node:assert";
-import { join } from "pathe";
 import type { SSEMessage } from "../common/sse.js";
 import type {
 	DefineOption,
@@ -14,6 +13,8 @@ import type {
 	RPCSSEFunction,
 } from "../common/types.js";
 import { formatSSEMessage } from "./util/sse.js";
+import { context } from "./util/context.js";
+import { RPCManifest } from "./types.js";
 
 type Handle = (
 	req: Connect.IncomingMessage,
@@ -26,7 +27,7 @@ function getBody(request: Connect.IncomingMessage): Promise<string> {
 		let body: string;
 		request
 			.on("data", (chunk) => {
-				bodyParts.push(chunk);
+				bodyParts.push(chunk as Uint8Array);
 			})
 			.on("end", () => {
 				body = Buffer.concat(bodyParts).toString();
@@ -35,7 +36,7 @@ function getBody(request: Connect.IncomingMessage): Promise<string> {
 	});
 }
 
-export function createMiddlewares(mode: "preview", rootDir: string): Handle;
+export function createMiddlewares(mode: "preview", manifest: RPCManifest): Handle;
 export function createMiddlewares(mode: "dev", server: ViteDevServer): Handle;
 /**
  * Create a generic middleware
@@ -44,11 +45,10 @@ export function createMiddlewares(mode: "dev", server: ViteDevServer): Handle;
  */
 export function createMiddlewares(
 	mode: "preview" | "dev",
-	server?: ViteDevServer | string,
+	server?: ViteDevServer | RPCManifest,
 ): Handle {
 	return async (req, res) => {
 		const url = withoutBase(req.url ?? "", "/__rpc");
-		const filename = parseFilename(url, { strict: true });
 
 		const [filepath, method] = url.split("@");
 
@@ -58,48 +58,43 @@ export function createMiddlewares(
 
 		try {
 			if (mode === "dev") {
-				module = await (server as ViteDevServer).ssrLoadModule(filepath);
+				module = (await (server as ViteDevServer).ssrLoadModule(filepath));
 			} else {
-				module = await import(
-					join(
-						server as string,
-						"dist",
-						"server",
-						`${filepath.replace(".rpc.ts", ".rpc.js")}`,
-					)
-				);
+				module = (await (server as RPCManifest)[filepath]);
 			}
 		} catch (e) {
-			res.writeHead(404);
-			res.end();
+			res.writeHead(404)
+				.end(e);
 			return;
 		}
 
-		let rpc: RPCFunction<object, object> | RPCSSEFunction<object, object>;
+		let rpc: RPCFunction | RPCSSEFunction
 		let option:
-			| DefineOption<object, object>
-			| DefineSSEOption<object, object>
+			| DefineOption
+			| DefineSSEOption
 			| undefined;
 
 		try {
 			rpc = module[method];
 			option = rpc.option;
 		} catch {
-			res.writeHead(404);
-			res.end();
+			res.writeHead(404)
+				.end();
 			return;
 		}
 
-		// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-		let ret: any;
+		let ret: void | ReadableStream<SSEMessage<Record<string, never>>>;
 
 		try {
 			assert(option !== undefined && option.argsPaser !== undefined);
 
-			ret = await rpc(option.argsPaser(body));
+			ret = await context.call({
+				request: req,
+				response: res
+			}, async () => await rpc(...option.argsPaser(body)));
 		} catch (e) {
-			res.writeHead(500);
-			res.end(JSON.stringify(e));
+			res.writeHead(500)
+				.end(JSON.stringify(e));
 			return;
 		}
 
@@ -111,24 +106,23 @@ export function createMiddlewares(
 			});
 			res.flushHeaders();
 
-			const transform = new TransformStream<SSEMessage<object>, string>({
+			const transform = new TransformStream<SSEMessage<never>, string>({
 				transform({ data, ...sse }, controller) {
 					controller.enqueue(
 						formatSSEMessage({
 							data:
 								option !== undefined
-									// biome-ignore lint/complexity/noBannedTypes: <explanation>
-									? (option as DefineSSEOption<{}, {}>).sseStringify(data)
+									? (option as DefineSSEOption).sseStringify(data)
 									: JSON.stringify(data),
 							...sse,
 						}),
 					);
 				},
 			});
-			ret.pipeTo(transform.writable);
+			void ret.pipeTo(transform.writable);
 
 			try {
-				transform.readable.pipeTo(
+				void transform.readable.pipeTo(
 					new WritableStream<string>({
 						async write(chunk, controller) {
 							try {
@@ -143,7 +137,7 @@ export function createMiddlewares(
 									});
 								}
 								controller.error("closed");
-								return await new Promise<void>((done, rej) => {
+								return await new Promise<void>((done) => {
 									console.log("closed");
 									res.end(() => {
 										done();
@@ -157,7 +151,7 @@ export function createMiddlewares(
 							console.log(error);
 						},
 						async close() {
-							return await new Promise<void>((done, rej) => {
+							return await new Promise<void>((done) => {
 								console.log("closed");
 								res.end(() => {
 									done();

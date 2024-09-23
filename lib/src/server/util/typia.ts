@@ -1,7 +1,6 @@
 import type { CallExpression, Project, Type } from "ts-morph";
 import ts from "typescript";
 import type { IProject } from "typia/lib/transformers/IProject.js";
-import { FunctionImporter } from "typia/lib/programmers/helpers/FunctionImporter.js";
 import { JsonAssertStringifyProgrammer } from "typia/lib/programmers/json/JsonAssertStringifyProgrammer.js";
 import { JsonAssertParseProgrammer } from "typia/lib/programmers/json/JsonAssertParseProgrammer.js";
 
@@ -54,7 +53,6 @@ export function transformTypia(
 ) {
 	initializer.transform((traversal) => {
 		const node = traversal.currentNode as ts.CallExpression;
-		const importer = new FunctionImporter("test");
 
 		return traversal.factory.updateCallExpression(
 			node,

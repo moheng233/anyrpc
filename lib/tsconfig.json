@@ -8,7 +8,4 @@
             "path": "src/server"
         }
     ],
-    "exclude": [
-        "./examples/**"
-    ],
 }

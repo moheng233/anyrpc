@@ -1,5 +1,5 @@
 import { ofetch } from "ofetch";
-import { resolveURL, stringifyQuery } from "ufo";
+import { resolveURL } from "ufo";
 import * as Namespace from "typia/lib/functional/Namespace";
 
 import type {
@@ -10,13 +10,13 @@ import type {
 } from "../common/types";
 import { createSSETransformStream } from "./sse";
 
-function rpc<P, R>(
+function rpc<P extends [] = [], R extends {} = Record<string, never>>(
 	path: string,
 	method: string,
 	option?: DefineOption<P, R>,
 ): RPCFunction<P, R> {
 	return Object.assign(
-		async (args: P) => {
+		async (...args: P) => {
 			return ofetch<R>(resolveURL("/__rpc", `${path}@${method}`), {
 				method: "POST",
 				responseType: "json",
@@ -25,6 +25,7 @@ function rpc<P, R>(
 						? option.argsStringify(args)
 						: JSON.stringify(args),
 				parseResponse(responseText) {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 					return option !== undefined
 						? option.returnPaser(responseText)
 						: JSON.parse(responseText);
@@ -40,13 +41,13 @@ function rpc<P, R>(
 const rpcPure = Object.assign(rpc, Namespace.json.stringify("rpc"), Namespace.assert("rpc"));
 export { rpcPure as rpc };
 
-function rpcSSE<S extends {}, P>(
+function rpcSSE<S extends {} = Record<string, never>, P extends [] = []>(
 	path: string,
 	method: string,
 	option?: DefineSSEOption<S, P>,
 ): RPCSSEFunction<S, P> {
 	return Object.assign(
-		async (args: P) => {
+		async (...args: P) => {
 			const stream = await ofetch(resolveURL("/__rpc", `${path}@${method}`), {
 				method: "POST",
 				responseType: "stream",

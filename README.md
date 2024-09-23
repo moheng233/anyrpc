@@ -136,6 +136,8 @@ Create a generic middleware
 
 ### `defineSSE()`
 
+### `useContext()`
+
 <!-- /automd -->
 
 <!-- automd:with-automd -->

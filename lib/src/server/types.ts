@@ -1,6 +1,20 @@
-import type { SSEMessageEmit } from "./util/sse.js";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
-export type RPCSSEDefineFunction<S extends {}, P> = (
+import type { Connect } from "vite";
+
+import type { SSEMessageEmit } from "./util/sse.js";
+import { RPCModule } from "../common/types.js";
+
+export type RPCManifest = Record<string, Promise<RPCModule>>;
+
+export type RPCSSEDefineFunction<S, P> = (
 	sse: SSEMessageEmit<S>,
 	args: P,
 ) => Promise<void>;
+
+declare module "@moheng/anyrpc/server" {
+	interface Context {
+		request: Connect.IncomingMessage;
+		response: ServerResponse<IncomingMessage>,
+	}
+}

@@ -1,8 +1,8 @@
-import { defineSSE } from "@moheng/anyrpc/server";
+import { define, defineSSE, SSEMessageEmit } from "@moheng/anyrpc/server";
 
-export const hello = defineSSE<string, {}>(async (ev, args) => {
+export const hello = defineSSE(async (ev: SSEMessageEmit<string>, start: number, end: number) => {
 	console.log("test");
-	let count = 0;
+	let count = start;
 
 	const interval = setInterval(async () => {
 		try {
@@ -10,7 +10,7 @@ export const hello = defineSSE<string, {}>(async (ev, args) => {
 			await ev.emit(data, { id: count.toString() });
 			console.log(data);
 			count += 1;
-			if (count > 20) {
+			if (count >= end) {
 				clearInterval(interval);
 				ev.close();
 			}
@@ -20,4 +20,8 @@ export const hello = defineSSE<string, {}>(async (ev, args) => {
 			ev.close();
 		}
 	}, 1000);
+});
+
+export const test = define(async (e: string) => {
+
 });

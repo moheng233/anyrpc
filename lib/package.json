@@ -14,9 +14,12 @@
 	"license": "ISC",
 	"publishConfig": {},
 	"devDependencies": {
-		"@biomejs/biome": "^1.9.2",
+		"@eslint/js": "^9.11.0",
+		"@types/eslint__js": "^8.42.3",
 		"@types/node": "^22.5.5",
-		"typescript": "^5.6.2"
+		"eslint": "^9.11.0",
+		"typescript": "^5.6.2",
+		"typescript-eslint": "^8.6.0"
 	},
 	"dependencies": {
 		"ofetch": "^1.4.0",
@@ -24,7 +27,11 @@
 		"ts-morph": "^23.0.0",
 		"typia": "^6.10.2",
 		"ufo": "^1.5.4",
+		"unctx": "^2.3.1",
 		"vite": "^5.4.7"
+	},
+	"peerDependencies": {
+		"typia": "^6.10.2"
 	},
 	"exports": {
 		"./server": {
@@ -41,9 +48,11 @@
 			"types": "./dist/client/index.d.ts",
 			"import": "./dist/client/index.js",
 			"default": "./dist/client/index.js"
+		},
+		"./manifest": {
+			"types": "./dist/server/manifest.d.ts",
+			"import": "./dist/client/manifest.js",
+			"default": "./dist/client/manifest.js"
 		}
-	},
-	"peerDependencies": {
-		"typia": "^6.10.2"
 	}
 }

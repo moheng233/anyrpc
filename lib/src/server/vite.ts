@@ -1,14 +1,11 @@
 import assert from "node:assert";
 import { glob } from "node:fs/promises";
-import path, { join, resolve } from "pathe";
+import path, { join } from "pathe";
 
 import {
-	type CallExpression,
 	ModuleKind,
 	ModuleResolutionKind,
-	Node,
 	Project,
-	type Type,
 	VariableDeclarationKind,
 } from "ts-morph";
 import { type Plugin, createFilter } from "vite";
@@ -20,7 +17,7 @@ import { transformRPCFile } from "./transform.js";
 
 const filter = createFilter("**/*.rpc.ts");
 
-const virtualRPCManifestModuleId = "virtual:anyrpc/manifest.js";
+const virtualRPCManifestModuleId = "@moheng/anyrpc/manifest";
 const resolvedVirtualRPCManifestModuleId = `\0${virtualRPCManifestModuleId}`;
 
 export default function anyrpc(): Plugin {
@@ -30,11 +27,11 @@ export default function anyrpc(): Plugin {
 	return {
 		name: "vite-plugin-anyrpc",
 		enforce: "pre",
-		async config(config, env) {
+		async config(config) {
 			rootDir = config.root ?? process.cwd();
 
 			project = new Project({
-				tsConfigFilePath: await findTsConfig(rootDir, rootDir),
+				tsConfigFilePath: await findTsConfig(path.normalize(rootDir), path.normalize(rootDir)),
 				skipAddingFilesFromTsConfig: false,
 				compilerOptions: {
 					moduleResolution: ModuleResolutionKind.Bundler,
@@ -44,41 +41,47 @@ export default function anyrpc(): Plugin {
 
 			return {
 				optimizeDeps: {
-					include: ["anyrpc/client", "anyrpc/server"],
-				},
-				ssr: {
-					external: ["anyrpc"],
+					include: ["@moheng/anyrpc/client"],
 				},
 				build: {
 					rollupOptions: {
-						input: config.build?.ssr
-							? await Array.fromAsync(glob(join(rootDir, "**", "*.rpc.ts")))
-							: undefined,
-					},
+						output: {
+							manualChunks: (id) => {
+								if (filter(id)) {
+									return "rpc";
+								}
+							}
+						}
+					}
+				},
+				ssr: {
+					external: ["@moheng/anyrpc/server"],
+					noExternal: ["@moheng/anyrpc/manifest"]
 				},
 			};
 		},
-		resolveId(source, importer, options) {
+		resolveId(source) {
 			if (source === virtualRPCManifestModuleId) {
 				return resolvedVirtualRPCManifestModuleId;
 			}
 		},
-		async configurePreviewServer(server) {
-			server.middlewares.use(
-				"/__rpc",
-				createMiddlewares("preview", server.config.root),
-			);
-		},
-		async configureServer(server) {
+		configureServer(server) {
+			// eslint-disable-next-line @typescript-eslint/no-misused-promises
 			server.middlewares.use("/__rpc", createMiddlewares("dev", server));
 		},
 		async load(id, options) {
 			const ssr = options?.ssr === true;
 
 			if (id === resolvedVirtualRPCManifestModuleId) {
-				const rpcModules = (await Array.fromAsync(glob(join(rootDir, "**", "*.rpc.ts")))).map(p => path.relative(rootDir, p));
+				const rpcModules = (
+					await Array.fromAsync(glob(join(rootDir, "**", "*.rpc.ts")))
+				).map((p) => path.relative(rootDir, p));
 
-				const source = project.createSourceFile(join(rootDir, "manifest.js"), "", { overwrite: true });
+				const source = project.createSourceFile(
+					join(rootDir, "manifest.js"),
+					"",
+					{ overwrite: true },
+				);
 
 				source.addVariableStatement({
 					isExported: true,
@@ -86,15 +89,15 @@ export default function anyrpc(): Plugin {
 					declarations: [
 						{
 							name: "manifest",
-							initializer: `{${rpcModules.map(e => `"${e}": import("../${e}"),`)}}`
-						}
-					]
+							initializer: `{${rpcModules.map((e) => `"${e}": import("${path.join(rootDir, e)}")`).join(",")}}`,
+						},
+					],
 				});
 
 				return source.getFullText();
 			}
 		},
-		async transform(code, id, options) {
+		transform(code, id, options) {
 			const ssr = options?.ssr === true;
 
 			if (filter(id)) {
@@ -128,6 +131,7 @@ async function findTsConfig(
 			return tsConfigFilePath;
 		}
 		curr = dir;
-		// biome-ignore lint/correctness/noConstantCondition: <explanation>
+
+		// eslint-disable-next-line no-constant-condition
 	} while (true);
 }

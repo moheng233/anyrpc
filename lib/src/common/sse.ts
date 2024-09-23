@@ -4,6 +4,6 @@ export interface SSEMessageOption {
 	retry?: number;
 }
 
-export interface SSEMessage<O extends {}> extends SSEMessageOption {
+export interface SSEMessage<O> extends SSEMessageOption {
 	data: O;
 }

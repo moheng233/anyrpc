@@ -1,40 +1,61 @@
 import * as Namespace from "typia/lib/functional/Namespace/index.js";
 
+import type { SSEMessage } from "../common/sse.js";
 import type {
 	DefineOption,
 	DefineSSEOption,
 	RPCFunction,
 	RPCSSEFunction,
 } from "../common/types.js";
-import type { RPCSSEDefineFunction } from "./types.js";
 import { SSEMessageEmit } from "./util/sse.js";
 
-function define<P, R>(
-	fun: RPCFunction<P, R>,
-	option?: DefineOption<P, R>,
-): RPCFunction<P, R> {
-	return Object.assign(fun, {
-		option,
-	});
+export type Parameters<
+	F extends (...args: never[]) => Promise<object | void>,
+> = F extends (...args: infer P) => Promise<object | void> ? P : never;
+
+export type AsyncReturnType<
+	F extends (...args: never[]) => Promise<object | void>
+> = F extends (...args: never[]) => Promise<infer R> ? R : void;
+
+function define<F extends (...args: never[]) => Promise<object | void>>(
+	fun: F,
+	option?: DefineOption<Parameters<F>, AsyncReturnType<F>>,
+): RPCFunction<Parameters<F>, AsyncReturnType<F>> {
+	return Object.assign(
+		(...args: Parameters<F>) => fun(...args) as Promise<AsyncReturnType<F>>,
+		{
+			option,
+		},
+	);
 }
 
-// biome-ignore lint/complexity/noBannedTypes: <explanation>
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const definePure = Object.assign<typeof define, {}, {}>(
 	define,
 	Namespace.json.stringify("define"),
-	Namespace.assert("define")
+	Namespace.assert("define"),
 );
 export { definePure as define };
 
-function defineSSE<S extends {}, P>(
-	fun: RPCSSEDefineFunction<S, P>,
-	option?: DefineSSEOption<S, P>,
-): RPCSSEFunction<S, P> {
-	return Object.assign(
-		async (args: P) => {
-			const transform = new TransformStream();
+export type SSEParameters<
+	F extends (ev: SSEMessageEmit<unknown>, ...args: never[]) => Promise<void>,
+> = F extends (ev: SSEMessageEmit<unknown>, ...args: infer P) => Promise<void> ? P : never;
 
-			fun(new SSEMessageEmit(transform.writable), args);
+export type SSEExtract<
+	F extends (ev: SSEMessageEmit<unknown>, ...args: never[]) => Promise<void>
+> = F extends (ev: SSEMessageEmit<infer S>, ...args: infer P) => Promise<void> ? S : never;
+
+function defineSSE<
+	F extends (ev: SSEMessageEmit<unknown>, ...args: never[]) => Promise<void>,
+>(
+	fun: F,
+	option?: DefineSSEOption<SSEExtract<F>, SSEParameters<F>>,
+): RPCSSEFunction<SSEExtract<F>, SSEParameters<F>> {
+	return Object.assign(
+		async (...args: SSEParameters<F>) => {
+			const transform = new TransformStream<SSEMessage<SSEExtract<F>>, SSEMessage<SSEExtract<F>>>();
+
+			await fun(new SSEMessageEmit(transform.writable), ...args);
 
 			return transform.readable;
 		},
@@ -44,10 +65,10 @@ function defineSSE<S extends {}, P>(
 	);
 }
 
-// biome-ignore lint/complexity/noBannedTypes: <explanation>
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const defineSSEPure = Object.assign<typeof defineSSE, {}, {}>(
 	defineSSE,
 	Namespace.json.stringify("defineSSE"),
-	Namespace.assert("defineSSE")
+	Namespace.assert("defineSSE"),
 );
 export { defineSSEPure as defineSSE };

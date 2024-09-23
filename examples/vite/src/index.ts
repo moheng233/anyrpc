@@ -1,6 +1,6 @@
 import { hello } from './hello.rpc'
 
-const gen = await hello({})
+const gen = await hello(0, 50)
 const writable = gen.pipeTo(
   new WritableStream({
     abort(reason) {

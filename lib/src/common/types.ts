@@ -2,16 +2,19 @@ import type { SSEMessage } from "../common/sse.js";
 
 export type RPCModule = Record<string, RPCFunction | RPCSSEFunction>;
 
-export type RPCFunction<P = {}, R = {}> = ((args: P) => Promise<R>) & {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RPCFunction<P extends any[] = [], R extends object | void = void> = ((...args: P) => Promise<R>) & {
 	option?: DefineOption<P, R>;
 };
-export type RPCSSEFunction<S extends {} = object, P = {}> = ((
-	args: P,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type RPCSSEFunction<S = Record<string, never>, P extends any[] = []> = ((
+	...args: P
 ) => Promise<ReadableStream<SSEMessage<S>>>) & {
 	option?: DefineSSEOption<S, P>;
 };
 
-export type DefineOption<P, R> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DefineOption<P extends any[] = [], R = void> = {
 	argsStringify: (args: P) => string;
 	argsPaser: (json: string) => P;
 
@@ -19,7 +22,8 @@ export type DefineOption<P, R> = {
 	returnPaser: (json: string) => R;
 };
 
-export type DefineSSEOption<S, P> = Omit<
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type DefineSSEOption<S = Record<string, never>, P extends any[] = []> = Omit<
 	DefineOption<P, void>,
 	"returnStringify" | "returnPaser"
 > & {

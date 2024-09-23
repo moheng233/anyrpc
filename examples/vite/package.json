@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --ssr"
+    "build": "vite build && vite build --ssr ./src/index.server.ts"
   },
   "dependencies": {
     "@moheng/anyrpc": "workspace:",
