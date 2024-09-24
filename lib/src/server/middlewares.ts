@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Connect, ViteDevServer } from "vite";
 
-import assert from "node:assert";
-import { withoutBase } from "ufo";
+import { defu } from "defu";
+import { parseQuery, parseURL } from "ufo";
 
 import type { SSEMessage } from "../common/sse.js";
 import type {
@@ -14,8 +14,9 @@ import type {
 } from "../common/types.js";
 
 import { formatSSEMessage } from "../common/sse.js";
-import { RPCManifest } from "./types.js";
+import { AnyRPCMiddlewaresOption, RPCManifest } from "./types.js";
 import { context } from "./util/context.js";
+import { defaultInclude } from "./util/fs.js";
 
 type Handle = (
     req: Connect.IncomingMessage,
@@ -43,15 +44,21 @@ export function createMiddlewares(mode: "dev", server: ViteDevServer): Handle;
  * Create a generic middleware
  * @param mode Mode
  * @returns middleware function
+ * @group middleware
  */
 export function createMiddlewares(
     mode: "dev" | "preview",
-    server?: RPCManifest | ViteDevServer,
+    server: RPCManifest | ViteDevServer,
+    inputOption?: AnyRPCMiddlewaresOption
 ): Handle {
-    return async (req, res) => {
-        const url = withoutBase(req.url ?? "", "/__rpc");
+    const { withoutBaseUrl } = defu(inputOption, {
+        include: defaultInclude,
+        withoutBaseUrl: "/__rpc"
+    } satisfies AnyRPCMiddlewaresOption);
 
-        const [filepath, method] = url.split("@");
+    return async (req, res) => {
+        const { pathname, search } = parseURL(req.url);
+        const { method } = parseQuery<{ method?: string }>(search);
 
         const body = await getBody(req);
 
@@ -59,15 +66,15 @@ export function createMiddlewares(
 
         try {
             if (mode === "dev") {
-                module = (await (server as ViteDevServer).ssrLoadModule(filepath));
+                module = (await (server as ViteDevServer).ssrLoadModule(pathname));
             }
             else {
-                module = (await (server as RPCManifest)[filepath]);
+                module = (await (server as RPCManifest)[pathname]);
             }
         }
-        catch (e) {
+        catch {
             res.writeHead(404)
-                .end(e);
+                .end(`not found ${pathname} module`);
             return;
         }
 
@@ -78,24 +85,26 @@ export function createMiddlewares(
             | undefined;
 
         try {
+            if (method === undefined) {
+                throw new Error();
+            }
+
             rpc = module[method];
             option = rpc.option;
         }
         catch {
             res.writeHead(404)
-                .end();
+                .end(`not found ${pathname}#${method} method`);
             return;
         }
 
         let ret: ReadableStream<SSEMessage<Record<string, never>>> | void;
 
         try {
-            assert(option !== undefined && option.argsPaser !== undefined);
-
             ret = await context.call({
                 request: req,
                 response: res
-            }, async () => await rpc(...option.argsPaser(body)));
+            }, async () => await rpc(...(option !== undefined ? option.argsPaser(body) : JSON.parse(body) as [])));
         }
         catch (e) {
             res.writeHead(500)

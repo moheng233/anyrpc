@@ -1,11 +1,14 @@
-import type { Context } from "@moheng/anyrpc/server";
-
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createContext } from "unctx";
+import { createContext, type UseContext } from "unctx";
 
-export const context = createContext<Context>({
+import { Context } from "../types.js";
+
+export const context: UseContext<Context> = createContext<Context>({
     asyncContext: true,
     AsyncLocalStorage
 });
 
-export const useContext = context.use;
+/**
+ * @group hook
+ */
+export const useContext: () => Context = context.use;

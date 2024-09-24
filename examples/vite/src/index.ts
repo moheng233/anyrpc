@@ -1,4 +1,4 @@
-import { hello } from './hello.rpc'
+import { hello } from './index.rpc'
 
 const gen = await hello(0, 50)
 const writable = gen.pipeTo(

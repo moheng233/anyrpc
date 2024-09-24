@@ -1,8 +1,7 @@
 {
-	"name": "@moheng/anyrpc",
+	"name": "@anyrpc/core",
 	"version": "1.0.1",
 	"description": "",
-	"main": "index.js",
 	"type": "module",
 	"scripts": {
 		"build": "tsc -b",
@@ -24,16 +23,19 @@
 		"typescript-eslint": "^8.6.0"
 	},
 	"dependencies": {
+		"defu": "^6.1.4",
+		"hookable": "^5.5.3",
 		"ofetch": "^1.4.0",
 		"pathe": "^1.1.2",
+		"pkg-types": "^1.2.0",
 		"ts-morph": "^23.0.0",
 		"typia": "^6.10.2",
 		"ufo": "^1.5.4",
-		"unctx": "^2.3.1",
-		"vite": "^5.4.7"
+		"unctx": "^2.3.1"
 	},
 	"peerDependencies": {
-		"typia": "^6.10.2"
+		"typia": "^6.10.2",
+        "vite": "^5.4.7"
 	},
 	"exports": {
 		"./server": {
@@ -50,11 +52,6 @@
 			"types": "./dist/client/index.d.ts",
 			"import": "./dist/client/index.js",
 			"default": "./dist/client/index.js"
-		},
-		"./manifest": {
-			"types": "./dist/server/manifest.d.ts",
-			"import": "./dist/client/manifest.js",
-			"default": "./dist/client/manifest.js"
 		}
 	}
 }

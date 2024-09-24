@@ -12,9 +12,27 @@ export type RPCSSEDefineFunction<S, P> = (
     args: P,
 ) => Promise<void>;
 
-declare module "@moheng/anyrpc/server" {
-    interface Context {
-        request: Connect.IncomingMessage;
-        response: ServerResponse<IncomingMessage>;
-    }
+export interface AnyRPCBaseOption {
+    include?: (id: string | undefined) => boolean;
+}
+
+export interface AnyRPCViteOption extends AnyRPCBaseOption {
+    /**
+     * Start AnyRPCMiddlewares in vite's DevServer
+     * @default false
+     */
+    enableDevMiddlewares?: boolean;
+}
+
+export interface AnyRPCMiddlewaresOption extends AnyRPCBaseOption {
+    /**
+     * Remove the fixed prefix for incoming requests
+     * @default "/__rpc"
+     */
+    withoutBaseUrl?: string;
+}
+
+export interface Context {
+    request: Connect.IncomingMessage;
+    response: ServerResponse<IncomingMessage>;
 }

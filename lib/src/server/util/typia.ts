@@ -51,7 +51,7 @@ export function transformTypia(
         ret?: Type;
         sse?: Type;
     },
-) {
+): void {
     initializer.transform((traversal) => {
         const node = traversal.currentNode as ts.CallExpression;
 

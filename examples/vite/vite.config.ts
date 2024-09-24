@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import anyrpc from "@moheng/anyrpc/vite";
+import anyrpc from "@anyrpc/core/vite";
 import { defineConfig } from "vite";
 import inspect from "vite-plugin-inspect";
 
@@ -17,7 +17,9 @@ export default defineConfig({
             },
         },
         inspect(),
-        anyrpc(),
+        anyrpc({
+            enableDevMiddlewares: true
+        }),
     ],
     build: { target: "esnext" },
     appType: "spa",

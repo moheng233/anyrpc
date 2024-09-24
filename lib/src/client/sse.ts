@@ -17,7 +17,7 @@ export interface EventSourceMessage {
 
 export function createSSETransformStream<O>(
     parser?: (json: string) => O,
-) {
+): TransformStream<Uint8Array, SSEMessage<O>> {
     let onChunk: ReturnType<typeof getLines>;
 
     return new TransformStream<Uint8Array, SSEMessage<O>>({
@@ -63,7 +63,7 @@ export function getLines(
     let discardTrailingNewline = false;
 
     // return a function that can process each incoming byte chunk:
-    return function onChunk(arr: Uint8Array) {
+    return function onChunk(arr: Uint8Array): void {
         if (buffer === undefined) {
             buffer = arr;
             position = 0;
@@ -145,7 +145,7 @@ export function getMessages(
     const decoder = new TextDecoder();
 
     // return a function that can process each incoming line buffer:
-    return function onLine(line: Uint8Array, fieldLength: number) {
+    return function onLine(line: Uint8Array, fieldLength: number): void {
         if (line.length === 0) {
             // empty line denotes end of message. Trigger the callback and start a new message:
             onMessage?.(message);

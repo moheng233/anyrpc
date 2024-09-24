@@ -12,13 +12,16 @@ import type {
 } from "../common/types.js";
 
 import { SSEMessageEmit } from "../common/sse.js";
+import { RPCManifest } from "./types.js";
 
 function define<F extends (...args: never[]) => Promise<object | void>>(
     fun: F,
     option?: DefineOption<Parameters<F>, AsyncReturnType<F>>,
 ): RPCFunction<Parameters<F>, AsyncReturnType<F>> {
     return Object.assign(
-        (...args: Parameters<F>) => fun(...args) as Promise<AsyncReturnType<F>>,
+        (...args: Parameters<F>) => {
+            return fun(...args) as Promise<AsyncReturnType<F>>;
+        },
         {
             option,
         },
@@ -26,7 +29,7 @@ function define<F extends (...args: never[]) => Promise<object | void>>(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const definePure = Object.assign<typeof define, {}, {}>(
+const definePure: typeof define = Object.assign<typeof define, {}, {}>(
     define,
     Namespace.json.stringify("define"),
     Namespace.assert("define"),
@@ -54,9 +57,13 @@ function defineSSE<
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const defineSSEPure = Object.assign<typeof defineSSE, {}, {}>(
+const defineSSEPure: typeof defineSSE = Object.assign<typeof defineSSE, {}, {}>(
     defineSSE,
     Namespace.json.stringify("defineSSE"),
     Namespace.assert("defineSSE"),
 );
 export { defineSSEPure as defineSSE };
+
+export function createManifest(): RPCManifest {
+    return {};
+}

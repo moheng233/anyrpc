@@ -1,5 +1,9 @@
-import { define, defineSSE, SSEMessageEmit } from "@moheng/anyrpc/server";
+import { define, defineSSE, type SSEMessageEmit } from "@anyrpc/core/server";
 
+/**
+ * @param start start at
+ * @param end end of
+ */
 export const hello = defineSSE(async (ev: SSEMessageEmit<string>, start: number, end: number) => {
 	console.log("test");
 	let count = start;

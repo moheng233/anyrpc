@@ -128,15 +128,21 @@ const writable = gen.pipeTo(
 
 <!-- automd:jsdocs src="lib/src/server/index.ts" -->
 
-### `createMiddlewares(mode, server?)`
+## Macro
+
+### `createManifest()`
+
+Get a list of all .rpc.ts files used in the project
+
+## Middleware
+
+### `createMiddlewares(mode, server, inputOption?)`
 
 Create a generic middleware
 
 ### `define()`
 
 ### `defineSSE()`
-
-### `SSEMessageEmit()`
 
 ### `useContext()`
 
