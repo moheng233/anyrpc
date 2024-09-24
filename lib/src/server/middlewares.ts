@@ -49,11 +49,12 @@ export function createMiddlewares(mode: "dev", server: ViteDevServer): Handle;
 export function createMiddlewares(
     mode: "dev" | "preview",
     server: RPCManifest | ViteDevServer,
-    inputOption?: AnyRPCMiddlewaresOption
+    inputOption?: Partial<AnyRPCMiddlewaresOption>
 ): Handle {
-    const { withoutBaseUrl } = defu(inputOption, {
+    const { withoutBaseUrl, plugins } = defu(inputOption, {
         include: defaultInclude,
-        withoutBaseUrl: "/__rpc"
+        withoutBaseUrl: "/__rpc",
+        plugins: []
     } satisfies AnyRPCMiddlewaresOption);
 
     return async (req, res) => {
@@ -104,7 +105,9 @@ export function createMiddlewares(
             ret = await context.call({
                 request: req,
                 response: res
-            }, async () => await rpc(...(option !== undefined ? option.argsPaser(body) : JSON.parse(body) as [])));
+            }, async () => {
+                return await rpc(...(option !== undefined ? option.argsPaser(body) : JSON.parse(body) as []));
+            });
         }
         catch (e) {
             res.writeHead(500)

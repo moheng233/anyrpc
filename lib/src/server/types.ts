@@ -13,7 +13,7 @@ export type RPCSSEDefineFunction<S, P> = (
 ) => Promise<void>;
 
 export interface AnyRPCBaseOption {
-    include?: (id: string | undefined) => boolean;
+    include: (id: string | undefined) => boolean;
 }
 
 export interface AnyRPCViteOption extends AnyRPCBaseOption {
@@ -21,7 +21,14 @@ export interface AnyRPCViteOption extends AnyRPCBaseOption {
      * Start AnyRPCMiddlewares in vite's DevServer
      * @default false
      */
-    enableDevMiddlewares?: boolean;
+    enableDevMiddlewares: boolean;
+}
+
+export interface AnyRPCPlugin {
+    name: string;
+
+    preCall(): PromiseLike<void>;
+    postCall(): PromiseLike<void>;
 }
 
 export interface AnyRPCMiddlewaresOption extends AnyRPCBaseOption {
@@ -29,10 +36,14 @@ export interface AnyRPCMiddlewaresOption extends AnyRPCBaseOption {
      * Remove the fixed prefix for incoming requests
      * @default "/__rpc"
      */
-    withoutBaseUrl?: string;
+    withoutBaseUrl: string;
+    plugins: AnyRPCPlugin[];
 }
 
+export const REQUEST_SYMBOL: unique symbol = Symbol("request");
+export const RESPONSE_SYMBOL: unique symbol = Symbol("response");
+
 export interface Context {
-    request: Connect.IncomingMessage;
-    response: ServerResponse<IncomingMessage>;
+    [REQUEST_SYMBOL]: Connect.IncomingMessage;
+    [RESPONSE_SYMBOL]: ServerResponse<IncomingMessage>;
 }

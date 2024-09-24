@@ -15,7 +15,7 @@ import { defaultInclude } from "./util/fs.js";
 
 const INDEX_PATH = path.join(import.meta.dirname, "index.js");
 
-export default function anyrpc(inputOption?: AnyRPCViteOption): Plugin {
+export default function anyrpc(inputOption?: Partial<AnyRPCViteOption>): Plugin {
     let rootDir: string;
     let project: Project;
 
