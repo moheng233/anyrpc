@@ -11,7 +11,6 @@ import {
 
 import { createTypiaProject, transformTypia } from "./util/typia.js";
 
-const INDEX_PATH = path.join(import.meta.dirname, "index.d.ts");
 const MACRO_PATH = path.join(import.meta.dirname, "macro.d.ts");
 
 export async function transformRPCFile(
@@ -90,12 +89,14 @@ export async function transformRPCFile(
                 }
             }
 
-            const tproject = createTypiaProject(project);
-            transformTypia(initializer as CallExpression, tproject, {
-                sse: sseType,
-                args: argsType,
-                ret: retType,
-            });
+            if (useMacro !== undefined) {
+                const tproject = createTypiaProject(project);
+                transformTypia(initializer as CallExpression, tproject, {
+                    sse: sseType,
+                    args: argsType,
+                    ret: retType,
+                });
+            }
         }
     }
 }

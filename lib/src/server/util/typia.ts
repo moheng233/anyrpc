@@ -90,11 +90,11 @@ export function transformTypia(
                         ...(types.ret !== undefined
                             ? [
                                     traversal.factory.createPropertyAssignment(
-                                        "retStringify",
+                                        "returnStringify",
                                         createTypiaStringify(tproject, node.expression, types.ret),
                                     ),
                                     traversal.factory.createPropertyAssignment(
-                                        "retPaser",
+                                        "returnPaser",
                                         createTypiaPaser(tproject, node.expression, types.ret),
                                     ),
                                 ]
