@@ -1,8 +1,10 @@
 src
+docs
+examples
 
 tsconfig.tsbuildinfo
 
-biome.json
+eslint.config.mjs
 tsconfig.json
 tsconfig.*.json
 

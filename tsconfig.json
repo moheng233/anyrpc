@@ -1,5 +1,5 @@
 {
-    "extends": "../tsconfig.base.json",
+    "extends": "./tsconfig.app.json",
     "references": [
         {
             "path": "src/client"
@@ -11,4 +11,7 @@
             "path": "src/common"
         }
     ],
+    "exclude": [
+        "examples/*"
+    ]
 }
