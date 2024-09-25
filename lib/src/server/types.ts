@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Connect } from "vite";
 
+import { Hookable } from "hookable";
+
 import type { SSEMessageEmit } from "../common/sse.js";
 
 import { RPCModule } from "../common/types.js";
@@ -27,8 +29,10 @@ export interface AnyRPCViteOption extends AnyRPCBaseOption {
 export interface AnyRPCPlugin {
     name: string;
 
-    preCall(): PromiseLike<void>;
-    postCall(): PromiseLike<void>;
+    setup(): PromiseLike<void>;
+
+    preCall: () => PromiseLike<void>;
+    postCall: () => PromiseLike<void>;
 }
 
 export interface AnyRPCMiddlewaresOption extends AnyRPCBaseOption {
@@ -43,7 +47,13 @@ export interface AnyRPCMiddlewaresOption extends AnyRPCBaseOption {
 export const REQUEST_SYMBOL: unique symbol = Symbol("request");
 export const RESPONSE_SYMBOL: unique symbol = Symbol("response");
 
+export const OBJECTS_SYMBOL: unique symbol = Symbol("objects");
+
+export type ContextKey<_C extends object> = symbol;
+
 export interface Context {
     [REQUEST_SYMBOL]: Connect.IncomingMessage;
     [RESPONSE_SYMBOL]: ServerResponse<IncomingMessage>;
+
+    [OBJECTS_SYMBOL]: Map<ContextKey<object>, object>;
 }

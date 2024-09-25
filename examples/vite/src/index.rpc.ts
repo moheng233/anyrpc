@@ -19,9 +19,10 @@ export const hello = defineSSE(async (ev: SSEMessageEmit<string>, start: number,
 				ev.close();
 			}
 		} catch (error) {
-			console.error(error);
 			clearInterval(interval);
 			ev.close();
+
+            throw error;
 		}
 	}, 1000);
 });

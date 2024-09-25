@@ -1,10 +1,10 @@
-import * as Namespace from "typia/lib/functional/Namespace/index.js";
+import { assert } from "console";
 
 import type { SSEMessage } from "../common/sse.js";
 import type {
     AsyncReturnType,
-    DefineOption,
-    DefineSSEOption,
+    DefineHelper,
+    DefineSSEHelper,
     RPCFunction,
     RPCSSEFunction,
     SSEExtract,
@@ -14,33 +14,25 @@ import type {
 import { SSEMessageEmit } from "../common/sse.js";
 import { RPCManifest } from "./types.js";
 
-function define<F extends (...args: never[]) => Promise<object | void>>(
+export function define<F extends (...args: never[]) => Promise<object | void>>(
     fun: F,
-    option?: DefineOption<Parameters<F>, AsyncReturnType<F>>,
+    helper?: DefineHelper<Parameters<F>, AsyncReturnType<F>>,
 ): RPCFunction<Parameters<F>, AsyncReturnType<F>> {
     return Object.assign(
         (...args: Parameters<F>) => {
             return fun(...args) as Promise<AsyncReturnType<F>>;
         },
         {
-            option,
+            helper,
         },
     );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const definePure: typeof define = Object.assign<typeof define, {}, {}>(
-    define,
-    Namespace.json.stringify("define"),
-    Namespace.assert("define"),
-);
-export { definePure as define };
-
-function defineSSE<
+export function defineSSE<
     F extends (ev: SSEMessageEmit<unknown>, ...args: never[]) => Promise<void>,
 >(
     fun: F,
-    option?: DefineSSEOption<SSEExtract<F>, SSEParameters<F>>,
+    helper?: DefineSSEHelper<SSEExtract<F>, SSEParameters<F>>,
 ): RPCSSEFunction<SSEExtract<F>, SSEParameters<F>> {
     return Object.assign(
         async (...args: SSEParameters<F>) => {
@@ -51,19 +43,13 @@ function defineSSE<
             return transform.readable;
         },
         {
-            option,
+            helper,
         },
     );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-const defineSSEPure: typeof defineSSE = Object.assign<typeof defineSSE, {}, {}>(
-    defineSSE,
-    Namespace.json.stringify("defineSSE"),
-    Namespace.assert("defineSSE"),
-);
-export { defineSSEPure as defineSSE };
-
 export function createManifest(): RPCManifest {
+    assert(true);
+
     return {};
 }

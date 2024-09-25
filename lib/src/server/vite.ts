@@ -20,7 +20,7 @@ export default function anyrpc(inputOption?: Partial<AnyRPCViteOption>): Plugin 
     const { enableDevMiddlewares, include } = defu(inputOption, {
         enableDevMiddlewares: false,
         include: defaultInclude,
-    } satisfies AnyRPCViteOption);
+    } as AnyRPCViteOption);
 
     return {
         name: "vite-plugin-anyrpc",
@@ -54,17 +54,17 @@ export default function anyrpc(inputOption?: Partial<AnyRPCViteOption>): Plugin 
                     exclude: ["@anyrpc/core/server"]
                 },
                 ssr: {
-                    external: ["@anyrpc/core/server"],
+                    external: ["@anyrpc/core"],
                 },
             };
         },
-        resolveId(source, importer, { ssr }) {
+        resolveId() {
 
         },
-        configureServer(server) {
+        async configureServer(server) {
             if (enableDevMiddlewares) {
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                server.middlewares.use("/__rpc", createMiddlewares("dev", server));
+                server.middlewares.use("/__rpc", await createMiddlewares("dev", server));
             }
         },
         async transform(code, id, options) {

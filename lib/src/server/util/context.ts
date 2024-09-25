@@ -3,7 +3,7 @@ import { ServerResponse } from "node:http";
 import { createContext, type UseContext } from "unctx";
 import { Connect } from "vite";
 
-import { Context, REQUEST_SYMBOL, RESPONSE_SYMBOL } from "../types.js";
+import { Context, ContextKey, OBJECTS_SYMBOL, REQUEST_SYMBOL, RESPONSE_SYMBOL } from "../types.js";
 
 export const context: UseContext<Context> = createContext<Context>({
     asyncContext: true,
@@ -25,4 +25,16 @@ export function useRaw(): {
         request: context[REQUEST_SYMBOL],
         response: context[RESPONSE_SYMBOL]
     };
+}
+
+export function provide<C extends object>(key: ContextKey<C>, instance: C): void {
+    const context = useContext();
+
+    context[OBJECTS_SYMBOL].set(key, instance);
+}
+
+export function inject<C extends object>(key: ContextKey<C>, defaultValue?: C): C | undefined {
+    const context = useContext();
+
+    return (context[OBJECTS_SYMBOL].get(key) as C | undefined) ?? defaultValue;
 }

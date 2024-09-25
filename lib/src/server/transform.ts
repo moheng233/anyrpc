@@ -5,6 +5,7 @@ import {
     Node,
     type Project,
     type SourceFile,
+    ts,
     type Type,
     VariableDeclaration,
 } from "ts-morph";
@@ -18,6 +19,7 @@ export async function transformRPCFile(
     source: SourceFile,
     option: { rootDir: string; ssr: boolean },
 ): Promise<void> {
+    const tproject = createTypiaProject(project);
     const typeChecker = project.getTypeChecker();
 
     const targetDeclaration: [declaration: VariableDeclaration, name: string][] = [];
@@ -33,34 +35,41 @@ export async function transformRPCFile(
                 const declarationPath = signatureDeclaration.getSourceFile().getFilePath();
 
                 if (declarationPath === MACRO_PATH && declarationName != undefined) {
+                    if (option.ssr) {
+                        if (declarationName === "createManifest") {
+                            const rpcModules = (
+                                await Array.fromAsync(glob(join(option.rootDir, "**", "*.rpc.ts")))
+                            ).map(p => path.relative(option.rootDir, p));
+
+                            declaration.setInitializer(`{${rpcModules.map(e => `"${e}": import("${path.join(option.rootDir, e)}")`).join(",")}}`);
+
+                            continue;
+                        }
+                    }
+
                     targetDeclaration.push([declaration, declarationName]);
                 }
             }
         }
     }
 
-    if (!option.ssr) {
+    if (targetDeclaration.length > 0) {
+        if (!option.ssr) {
+            source.addImportDeclaration({
+                moduleSpecifier: "@anyrpc/core/client",
+                namedImports: ["makeRPCFetch", "makeRPCSSEFetch"],
+            });
+        }
+
         source.addImportDeclaration({
-            moduleSpecifier: "@anyrpc/core/client",
-            namedImports: ["rpc", "rpcSSE"],
+            moduleSpecifier: "@anyrpc/core/common",
+            namedImports: ["typia"]
         });
     }
 
     for (const [declaration, declarationName] of targetDeclaration) {
-        if (option.ssr) {
-            if (declarationName === "createManifest") {
-                const rpcModules = (
-                    await Array.fromAsync(glob(join(option.rootDir, "**", "*.rpc.ts")))
-                ).map(p => path.relative(option.rootDir, p));
-
-                declaration.setInitializer(`{${rpcModules.map(e => `"${e}": import("${path.join(option.rootDir, e)}")`).join(",")}}`);
-
-                continue;
-            }
-        }
-
         if (declaration.isExported() === true) {
-            let initializer = declaration.getInitializer()!;
+            const initializer = declaration.getInitializer() as CallExpression;
 
             let useMacro: string | undefined = undefined;
             let sseType: Type | undefined = undefined;
@@ -69,32 +78,47 @@ export async function transformRPCFile(
 
             switch (declarationName) {
                 case "define":
-                    useMacro = "rpc";
+                    useMacro = option.ssr ? "define" : "makeRPCFetch";
                     argsType = initializer.getType().getAliasTypeArguments()[0];
                     retType = initializer.getType().getAliasTypeArguments()[1];
                     break;
                 case "defineSSE":
-                    useMacro = "rpcSSE";
+                    useMacro = option.ssr ? "defineSSE" : "makeRPCSSEFetch";
                     sseType = initializer.getType().getAliasTypeArguments()[0];
                     argsType = initializer.getType().getAliasTypeArguments()[1];
                     break;
             }
 
-            if (!option.ssr) {
-                if (useMacro !== undefined) {
-                    declaration.setInitializer(
-                        `${useMacro}("${path.relative(option.rootDir, source.getFilePath())}", "${declaration.getName()}")`,
-                    );
-                    initializer = declaration.getInitializer() as CallExpression;
-                }
-            }
-
             if (useMacro !== undefined) {
-                const tproject = createTypiaProject(project);
-                transformTypia(initializer as CallExpression, tproject, {
+                const a = source
+                    .getImportDeclarations().find(e => e.getModuleSpecifierValue() === "@anyrpc/core/common")
+                    ?.getNamedImports().find(e => e.getName() === "typia");
+
+                const typia = transformTypia(a!.getNameNode().compilerNode, tproject, {
                     sse: sseType,
                     args: argsType,
                     ret: retType,
+                });
+
+                initializer.transform((traversal) => {
+                    const node = traversal.currentNode as ts.CallExpression;
+
+                    return traversal.factory.createCallExpression(
+                        traversal.factory.createIdentifier(useMacro),
+                        [],
+                        [
+                            ...(option.ssr
+                                ? [
+                                        node.arguments[0],
+                                    ]
+                                : [
+                                        traversal.factory.createStringLiteral(path.relative(option.rootDir, source.getFilePath())),
+                                        traversal.factory.createStringLiteral(declaration.getName()),
+                                    ]
+                            ),
+                            typia
+                        ]
+                    );
                 });
             }
         }

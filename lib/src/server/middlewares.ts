@@ -6,17 +6,15 @@ import { parseQuery, parseURL } from "ufo";
 
 import type { SSEMessage } from "../common/sse.js";
 import type {
-    DefineOption,
-    DefineSSEOption,
-    RPCFunction,
+    DefineHelper,
+    DefineSSEHelper,
     RPCModule,
-    RPCSSEFunction,
 } from "../common/types.js";
 
+import { PluginCallError, RPCCallError, RPCMethodNotFoundError, RPCModuleNotFoundError, RPCParmasPaserError, RPCReturnStringifyError, RPCServerError, RPCSSEStringifyError } from "../common/error.js";
 import { formatSSEMessage } from "../common/sse.js";
-import { AnyRPCMiddlewaresOption, REQUEST_SYMBOL, RESPONSE_SYMBOL, RPCManifest } from "./types.js";
+import { AnyRPCMiddlewaresOption, OBJECTS_SYMBOL, REQUEST_SYMBOL, RESPONSE_SYMBOL, RPCManifest } from "./types.js";
 import { context } from "./util/context.js";
-import { PluginCallError, RPCArgsPaserError, RPCCallError, RPCError, RPCMethodNotFoundError, RPCModuleNotFoundError, RPCReturnStringifyError } from "./util/error.js";
 import { defaultInclude } from "./util/fs.js";
 
 type Handle = (
@@ -39,24 +37,28 @@ function getBody(request: Connect.IncomingMessage): Promise<string> {
     });
 }
 
-export function createMiddlewares(mode: "preview", manifest: RPCManifest): Handle;
-export function createMiddlewares(mode: "dev", server: ViteDevServer): Handle;
+export function createMiddlewares(mode: "preview", manifest: RPCManifest): Promise<Handle>;
+export function createMiddlewares(mode: "dev", server: ViteDevServer): Promise<Handle>;
 /**
  * Create a generic middleware
  * @param mode Mode
  * @returns middleware function
  * @group middleware
  */
-export function createMiddlewares(
+export async function createMiddlewares(
     mode: "dev" | "preview",
     server: RPCManifest | ViteDevServer,
     inputOption?: Partial<AnyRPCMiddlewaresOption>
-): Handle {
+): Promise<Handle> {
     const { plugins } = defu(inputOption, {
         include: defaultInclude,
         withoutBaseUrl: "/__rpc",
         plugins: []
     } as AnyRPCMiddlewaresOption);
+
+    for (const plugin of plugins) {
+        await plugin.setup();
+    }
 
     return async (req, res) => {
         try {
@@ -79,39 +81,21 @@ export function createMiddlewares(
                 throw new RPCModuleNotFoundError(pathname, method ?? "", e);
             }
 
-            let rpc: RPCFunction | RPCSSEFunction;
-            let option:
-                | DefineOption
-                | DefineSSEOption
-                | undefined;
-
-            try {
-                if (method === undefined) {
-                    throw new Error();
-                }
-
-                rpc = module[method];
-
-                if (rpc === undefined) {
-                    throw new Error();
-                }
-
-                option = rpc.option;
-            }
-            catch (e) {
-                throw new RPCMethodNotFoundError(pathname, method ?? "", e);
+            if (method === undefined) {
+                throw new RPCMethodNotFoundError(pathname, method ?? "", null);
             }
 
-            let args: Parameters<typeof rpc> = [];
+            const rpc = module[method];
 
-            try {
-                args = (option !== undefined ? option.argsPaser(body) : JSON.parse(body) as []);
+            if (rpc === undefined) {
+                throw new RPCMethodNotFoundError(pathname, method ?? "", null);
             }
-            catch (e) {
-                if (mode === "dev" && e instanceof Error) {
-                    (server as ViteDevServer).ssrFixStacktrace(e);
-                }
-                throw new RPCArgsPaserError(pathname, method, e);
+
+            const helper = rpc.helper;
+
+            const args = helper.argsPaser(body);
+            if (!args.success) {
+                throw new RPCParmasPaserError(pathname, method, args);
             }
 
             let ret: ReadableStream<SSEMessage<Record<string, never>>> | void;
@@ -119,7 +103,9 @@ export function createMiddlewares(
             try {
                 ret = await context.call({
                     [REQUEST_SYMBOL]: req,
-                    [RESPONSE_SYMBOL]: res
+                    [RESPONSE_SYMBOL]: res,
+
+                    [OBJECTS_SYMBOL]: new Map()
                 }, async () => {
                     for (const plugin of plugins) {
                         try {
@@ -133,10 +119,18 @@ export function createMiddlewares(
                     let ret: Awaited<ReturnType<typeof rpc>> = void 0;
 
                     try {
-                        ret = await rpc(...args);
+                        ret = await rpc(...args.data);
                     }
                     catch (e) {
-                        throw new RPCCallError(pathname, method, e);
+                        if (mode === "dev" && e instanceof Error) {
+                            (server as ViteDevServer).ssrFixStacktrace(e);
+                        }
+                        if (e instanceof RPCCallError) {
+                            throw e;
+                        }
+                        else {
+                            throw new RPCCallError(pathname, method, e);
+                        }
                     }
 
                     for (const plugin of plugins) {
@@ -167,12 +161,15 @@ export function createMiddlewares(
 
                 const transform = new TransformStream<SSEMessage<never>, string>({
                     transform({ data, ...sse }, controller) {
+                        const conetnt = (helper as DefineSSEHelper).sseStringify(data);
+
+                        if (!conetnt.success) {
+                            throw new RPCSSEStringifyError(pathname, method, data);
+                        }
+
                         controller.enqueue(
                             formatSSEMessage({
-                                data:
-                                    option !== undefined
-                                        ? (option as DefineSSEOption).sseStringify(data)
-                                        : JSON.stringify(data),
+                                data: conetnt.data,
                                 ...sse,
                             }),
                         );
@@ -187,7 +184,6 @@ export function createMiddlewares(
                         },
                         async close() {
                             return await new Promise<void>((done) => {
-                                console.log("closed");
                                 res.end(() => {
                                     done();
                                 });
@@ -205,9 +201,7 @@ export function createMiddlewares(
                                         });
                                     });
                                 }
-                                controller.error("closed");
                                 return await new Promise<void>((done) => {
-                                    console.log("closed");
                                     res.end(() => {
                                         done();
                                     });
@@ -221,26 +215,23 @@ export function createMiddlewares(
                 );
             }
             else {
-                let content: string;
+                const content = (helper as DefineHelper).returnStringify(ret);
 
-                try {
-                    content = (option as DefineOption).returnStringify !== undefined ? (option as DefineOption).returnStringify(ret) : JSON.stringify(ret);
-                }
-                catch (e) {
-                    throw new RPCReturnStringifyError(pathname, method, e);
+                if (!content.success) {
+                    throw new RPCReturnStringifyError(pathname, method, content);
                 }
 
                 /// TODO: return is undefined
                 res
                     .writeHead(200, {
-                        "Content-Length": Buffer.byteLength(content),
+                        "Content-Length": Buffer.byteLength(content.data),
                         "Content-Type": "text/plain",
                     })
-                    .end(content);
+                    .end(content.data);
             }
         }
         catch (e) {
-            if (e instanceof RPCError) {
+            if (e instanceof RPCServerError) {
                 res
                     .writeHead(e.status)
                     .end(JSON.stringify(e));

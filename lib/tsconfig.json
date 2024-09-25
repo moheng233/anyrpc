@@ -6,6 +6,9 @@
         },
         {
             "path": "src/server"
+        },
+        {
+            "path": "src/common"
         }
     ],
 }

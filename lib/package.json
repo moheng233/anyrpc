@@ -29,7 +29,6 @@
 		"pathe": "^1.1.2",
 		"pkg-types": "^1.2.0",
 		"ts-morph": "^23.0.0",
-		"typia": "^6.10.2",
 		"ufo": "^1.5.4",
 		"unctx": "^2.3.1"
 	},
@@ -52,6 +51,11 @@
 			"types": "./dist/client/index.d.ts",
 			"import": "./dist/client/index.js",
 			"default": "./dist/client/index.js"
-		}
+		},
+        "./common": {
+            "types": "./dist/common/index.d.ts",
+            "import": "./dist/common/index.js",
+            "default": "./dist/common/index.js"
+        }
 	}
 }

@@ -21,23 +21,23 @@ Made by [@moheng233](https://github.com/moheng233) and [community](https://githu
 
 ## Install
 
-<!-- automd:pm-install name="@moheng/anyrpc" -->
+<!-- automd:pm-install name="@anyrpc/core" -->
 
 ```sh
 # ✨ Auto-detect
-npx nypm install @moheng/anyrpc
+npx nypm install @anyrpc/core
 
 # npm
-npm install @moheng/anyrpc
+npm install @anyrpc/core
 
 # yarn
-yarn add @moheng/anyrpc
+yarn add @anyrpc/core
 
 # pnpm
-pnpm install @moheng/anyrpc
+pnpm install @anyrpc/core
 
 # bun
-bun install @moheng/anyrpc
+bun install @anyrpc/core
 ```
 
 <!-- /automd -->
@@ -54,11 +54,15 @@ import { define, defineSSE } from "@moheng/anyrpc/server";
 
 ## Quick Start
 
-<!-- automd:file src="examples/vite/src/hello.rpc.ts" name="hello.rpc.ts" code lang="ts" -->
+<!-- automd:file src="examples/vite/src/index.rpc.ts" name="index.rpc.ts" code lang="ts" -->
 
-```ts hello.rpc.ts
-import { define, defineSSE, SSEMessageEmit } from "@moheng/anyrpc/server";
+```ts index.rpc.ts
+import { define, defineSSE, type SSEMessageEmit } from "@anyrpc/core/server";
 
+/**
+ * @param start start at
+ * @param end end of
+ */
 export const hello = defineSSE(async (ev: SSEMessageEmit<string>, start: number, end: number) => {
 	console.log("test");
 	let count = start;
@@ -92,7 +96,7 @@ export const test = define(async (e: string) => {
 <!-- automd:file src="examples/vite/src/index.ts" name="index.ts" code lang="ts" -->
 
 ```ts index.ts
-import { hello } from './hello.rpc'
+import { hello } from './index.rpc'
 
 const gen = await hello(0, 50)
 const writable = gen.pipeTo(
@@ -128,23 +132,21 @@ const writable = gen.pipeTo(
 
 <!-- automd:jsdocs src="lib/src/server/index.ts" -->
 
-## Macro
-
-### `createManifest()`
-
-Get a list of all .rpc.ts files used in the project
-
 ## Middleware
 
 ### `createMiddlewares(mode, server, inputOption?)`
 
 Create a generic middleware
 
+### `createManifest()`
+
 ### `define()`
 
 ### `defineSSE()`
 
 ### `useContext()`
+
+### `useRaw()`
 
 <!-- /automd -->
 
