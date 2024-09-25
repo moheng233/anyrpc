@@ -1,5 +1,6 @@
 {
   "private": true,
+  "workspaces": ["lib"],
   "scripts": {
     "build": "cd lib && pnpm build",
     "prepublish": "automd",
