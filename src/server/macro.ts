@@ -10,14 +10,16 @@ import type {
     SSEExtract,
     SSEParameters,
 } from "../common/types.js";
+import type { RPCManifest } from "./types.js";
 
 import { SSEMessageEmit } from "../common/sse.js";
-import { RPCManifest } from "./types.js";
 
 export function define<F extends (...args: never[]) => Promise<object | void>>(
     fun: F,
     helper?: DefineHelper<Parameters<F>, AsyncReturnType<F>>,
 ): RPCFunction<Parameters<F>, AsyncReturnType<F>> {
+    assert(helper !== undefined);
+
     return Object.assign(
         (...args: Parameters<F>) => {
             return fun(...args) as Promise<AsyncReturnType<F>>;
@@ -34,6 +36,8 @@ export function defineSSE<
     fun: F,
     helper?: DefineSSEHelper<SSEExtract<F>, SSEParameters<F>>,
 ): RPCSSEFunction<SSEExtract<F>, SSEParameters<F>> {
+    assert(helper !== undefined);
+
     return Object.assign(
         async (...args: SSEParameters<F>) => {
             const transform = new TransformStream<SSEMessage<SSEExtract<F>>, SSEMessage<SSEExtract<F>>>();

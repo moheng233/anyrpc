@@ -5,7 +5,7 @@ import ts from "typescript";
 import { JsonValidateParseProgrammer } from "typia/lib/programmers/json/JsonValidateParseProgrammer.js";
 import { JsonValidateStringifyProgrammer } from "typia/lib/programmers/json/JsonValidateStringifyProgrammer.js";
 
-export function createTypiaProject(project: Project): IProject {
+export function createTypiaProject(project: Project, diagnostic?: (diag: ts.Diagnostic) => number): IProject {
     const program = project.getProgram().compilerObject as ts.Program;
     const printer = ts.createPrinter();
     return {
@@ -14,7 +14,7 @@ export function createTypiaProject(project: Project): IProject {
         context: {} as ts.TransformationContext,
         extras: {
             addDiagnostic(diag: ts.Diagnostic) {
-                return 0;
+                return diagnostic !== undefined ? diagnostic(diag) : 0;
             },
         },
         options: {},

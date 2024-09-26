@@ -3,7 +3,9 @@ import { ServerResponse } from "node:http";
 import { createContext, type UseContext } from "unctx";
 import { Connect } from "vite";
 
-import { Context, ContextKey, OBJECTS_SYMBOL, REQUEST_SYMBOL, RESPONSE_SYMBOL } from "../types.js";
+import type { Context, ContextKey } from "../types.js";
+
+import { OBJECTS_SYMBOL, REQUEST_SYMBOL, RESPONSE_SYMBOL } from "../types.js";
 
 export const context: UseContext<Context> = createContext<Context>({
     asyncContext: true,

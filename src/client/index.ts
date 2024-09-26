@@ -1,5 +1,6 @@
+import type { Primitive } from "typia";
+
 import { ofetch } from "ofetch";
-import { Primitive } from "typia";
 import { resolveURL, withQuery } from "ufo";
 
 import type { SSEMessageEmit } from "../common/sse";
@@ -16,8 +17,13 @@ import type {
 import { RPCParmasStringifyError, RPCReturnParserError, RPCSSEParserError } from "../common/error";
 import { createSSETransformStream } from "./sse";
 
+export type { AsyncReturnType, DefineHelper, DefineSSEHelper, SSEExtract, SSEParameters } from "../common/types.js";
+
 export { typia } from "../common/typia.js";
 
+/**
+ * @internal
+ */
 export function makeRPCFetch<F extends (...args: never[]) => Promise<object | void>>(
     path: string,
     method: string,
@@ -47,6 +53,9 @@ export function makeRPCFetch<F extends (...args: never[]) => Promise<object | vo
     };
 };
 
+/**
+ * @internal
+ */
 export function makeRPCSSEFetch<
     F extends (ev: SSEMessageEmit<unknown>, ...args: never[]) => Promise<void>,
 >(

@@ -1,53 +1,59 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Connect, ViteDevServer } from "vite";
+import type { Connect } from "vite";
 
 import { defu } from "defu";
+import { Writable } from "node:stream";
 import { parseQuery, parseURL } from "ufo";
 
 import type { SSEMessage } from "../common/sse.js";
 import type {
     DefineHelper,
     DefineSSEHelper,
+    RPCFunctionWithHelper,
     RPCModule,
+    RPCSSEFunctionWithHelper,
 } from "../common/types.js";
+import type { AnyRPCMiddlewaresOption } from "./types.js";
 
 import { PluginCallError, RPCCallError, RPCMethodNotFoundError, RPCModuleNotFoundError, RPCParmasPaserError, RPCReturnStringifyError, RPCServerError, RPCSSEStringifyError } from "../common/error.js";
 import { formatSSEMessage } from "../common/sse.js";
-import { AnyRPCMiddlewaresOption, OBJECTS_SYMBOL, REQUEST_SYMBOL, RESPONSE_SYMBOL, RPCManifest } from "./types.js";
+import { OBJECTS_SYMBOL, REQUEST_SYMBOL, RESPONSE_SYMBOL } from "./types.js";
 import { context } from "./util/context.js";
 import { defaultInclude } from "./util/fs.js";
 
-type Handle = (
+export type Handle = (
     req: Connect.IncomingMessage,
     res: ServerResponse<IncomingMessage>,
 ) => PromiseLike<void>;
 
+export type loadModule = (url: string) => Promise<Record<string, RPCFunctionWithHelper | RPCSSEFunctionWithHelper>>;
+
 function getBody(request: Connect.IncomingMessage): Promise<string> {
     return new Promise((resolve) => {
         const bodyParts: Uint8Array[] = [];
-        let body: string;
         request
             .on("data", (chunk) => {
                 bodyParts.push(chunk as Uint8Array);
             })
             .on("end", () => {
-                body = Buffer.concat(bodyParts).toString();
-                resolve(body);
+                resolve(Buffer.concat(bodyParts).toString());
             });
     });
 }
 
-export function createMiddlewares(mode: "preview", manifest: RPCManifest): Promise<Handle>;
-export function createMiddlewares(mode: "dev", server: ViteDevServer): Promise<Handle>;
 /**
  * Create a generic middleware
- * @param mode Mode
  * @returns middleware function
- * @group middleware
+ * @example
+ * ```ts
+ * const manifest = createManifest();
+ * export default function () {
+ *     return createMiddlewares((url: string) => manifest[url]);
+ * }
+ * ```
  */
 export async function createMiddlewares(
-    mode: "dev" | "preview",
-    server: RPCManifest | ViteDevServer,
+    loadModule: loadModule,
     inputOption?: Partial<AnyRPCMiddlewaresOption>
 ): Promise<Handle> {
     const { plugins } = defu(inputOption, {
@@ -57,7 +63,7 @@ export async function createMiddlewares(
     } as AnyRPCMiddlewaresOption);
 
     for (const plugin of plugins) {
-        await plugin.setup();
+        await plugin["setup"]?.call(undefined);
     }
 
     return async (req, res) => {
@@ -70,12 +76,7 @@ export async function createMiddlewares(
             let module: RPCModule;
 
             try {
-                if (mode === "dev") {
-                    module = (await (server as ViteDevServer).ssrLoadModule(pathname));
-                }
-                else {
-                    module = (await (server as RPCManifest)[pathname]);
-                }
+                module = await loadModule(pathname);
             }
             catch (e) {
                 throw new RPCModuleNotFoundError(pathname, method ?? "", e);
@@ -98,58 +99,46 @@ export async function createMiddlewares(
                 throw new RPCParmasPaserError(pathname, method, args);
             }
 
-            let ret: ReadableStream<SSEMessage<Record<string, never>>> | void;
+            const ret = await context.call({
+                [REQUEST_SYMBOL]: req,
+                [RESPONSE_SYMBOL]: res,
 
-            try {
-                ret = await context.call({
-                    [REQUEST_SYMBOL]: req,
-                    [RESPONSE_SYMBOL]: res,
-
-                    [OBJECTS_SYMBOL]: new Map()
-                }, async () => {
-                    for (const plugin of plugins) {
-                        try {
-                            await plugin.preCall();
-                        }
-                        catch (e) {
-                            throw new PluginCallError(pathname, method, plugin.name, e);
-                        }
-                    }
-
-                    let ret: Awaited<ReturnType<typeof rpc>> = void 0;
-
+                [OBJECTS_SYMBOL]: new Map()
+            }, async () => {
+                for (const plugin of plugins) {
                     try {
-                        ret = await rpc(...args.data);
+                        await plugin["preCall"]?.call(undefined);
                     }
                     catch (e) {
-                        if (mode === "dev" && e instanceof Error) {
-                            (server as ViteDevServer).ssrFixStacktrace(e);
-                        }
-                        if (e instanceof RPCCallError) {
-                            throw e;
-                        }
-                        else {
-                            throw new RPCCallError(pathname, method, e);
-                        }
+                        throw new PluginCallError(pathname, method, plugin.name, e);
                     }
+                }
 
-                    for (const plugin of plugins) {
-                        try {
-                            await plugin.postCall();
-                        }
-                        catch (e) {
-                            throw new PluginCallError(pathname, method, plugin.name, e);
-                        }
+                let ret: Awaited<ReturnType<typeof rpc>> = void 0;
+
+                try {
+                    ret = await rpc(...args.data);
+                }
+                catch (e) {
+                    if (e instanceof RPCCallError) {
+                        throw e;
                     }
+                    else {
+                        throw new RPCCallError(pathname, method, e);
+                    }
+                }
 
-                    return ret;
-                });
-            }
-            catch (e) {
-                res.writeHead(500)
-                    .end(JSON.stringify(e));
-                return;
-            }
+                for (const plugin of plugins) {
+                    try {
+                        await plugin["postCall"]?.call(undefined);
+                    }
+                    catch (e) {
+                        throw new PluginCallError(pathname, method, plugin.name, e);
+                    }
+                }
+
+                return ret;
+            });
 
             if (ret instanceof ReadableStream) {
                 res.writeHead(200, {
@@ -159,7 +148,7 @@ export async function createMiddlewares(
                 });
                 res.flushHeaders();
 
-                const transform = new TransformStream<SSEMessage<never>, string>({
+                void ret.pipeThrough(new TransformStream<SSEMessage<never>, string>({
                     transform({ data, ...sse }, controller) {
                         const conetnt = (helper as DefineSSEHelper).sseStringify(data);
 
@@ -174,45 +163,7 @@ export async function createMiddlewares(
                             }),
                         );
                     },
-                });
-                void ret.pipeTo(transform.writable);
-
-                void transform.readable.pipeTo(
-                    new WritableStream<string>({
-                        abort(error) {
-                            console.log(error);
-                        },
-                        async close() {
-                            return await new Promise<void>((done) => {
-                                res.end(() => {
-                                    done();
-                                });
-                            });
-                        },
-                        async write(chunk, controller) {
-                            try {
-                                if (!res.closed) {
-                                    return await new Promise<void>((done, rej) => {
-                                        res.write(chunk, (error) => {
-                                            if (error !== undefined && error !== null) {
-                                                rej(error);
-                                            }
-                                            done();
-                                        });
-                                    });
-                                }
-                                return await new Promise<void>((done) => {
-                                    res.end(() => {
-                                        done();
-                                    });
-                                });
-                            }
-                            catch (error) {
-                                controller.error(error);
-                            }
-                        },
-                    }),
-                );
+                })).pipeTo(Writable.toWeb(res));
             }
             else {
                 const content = (helper as DefineHelper).returnStringify(ret);

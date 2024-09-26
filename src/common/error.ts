@@ -1,4 +1,4 @@
-import { IValidation } from "typia";
+import type { IValidation } from "typia";
 
 export abstract class RPCError<E = unknown> extends Error {
     constructor(

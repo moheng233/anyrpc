@@ -1,3 +1,5 @@
+import type { Plugin } from "vite";
+
 import { defu } from "defu";
 import path from "pathe";
 import { resolveTSConfig } from "pkg-types";
@@ -6,20 +8,23 @@ import {
     ModuleResolutionKind,
     Project,
 } from "ts-morph";
-import { type Plugin } from "vite";
+
+import type { AnyRPCViteOption } from "./types.js";
 
 import { createMiddlewares } from "./middlewares.js";
 import { transformRPCFile } from "./transform.js";
-import { AnyRPCViteOption } from "./types.js";
 import { defaultInclude } from "./util/fs.js";
 
 export default function anyrpc(inputOption?: Partial<AnyRPCViteOption>): Plugin {
     let rootDir: string;
     let project: Project;
 
-    const { enableDevMiddlewares, include } = defu(inputOption, {
+    const { include, middlewares } = defu(inputOption, {
         enableDevMiddlewares: false,
         include: defaultInclude,
+        middlewares: {
+            enable: false
+        }
     } as AnyRPCViteOption);
 
     return {
@@ -62,9 +67,9 @@ export default function anyrpc(inputOption?: Partial<AnyRPCViteOption>): Plugin 
 
         },
         async configureServer(server) {
-            if (enableDevMiddlewares) {
+            if (middlewares.enable) {
                 // eslint-disable-next-line @typescript-eslint/no-misused-promises
-                server.middlewares.use("/__rpc", await createMiddlewares("dev", server));
+                server.middlewares.use("/__rpc", await createMiddlewares(url => server.ssrLoadModule(url, { fixStacktrace: true }), middlewares));
             }
         },
         async transform(code, id, options) {

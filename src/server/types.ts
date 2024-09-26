@@ -1,11 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Connect } from "vite";
 
-import { Hookable } from "hookable";
-
 import type { SSEMessageEmit } from "../common/sse.js";
-
-import { RPCModule } from "../common/types.js";
+import type { RPCModule } from "../common/types.js";
 
 export type RPCManifest = Record<string, Promise<RPCModule>>;
 
@@ -23,16 +20,22 @@ export interface AnyRPCViteOption extends AnyRPCBaseOption {
      * Start AnyRPCMiddlewares in vite's DevServer
      * @default false
      */
-    enableDevMiddlewares: boolean;
+    middlewares: {
+        enable: boolean;
+    } & Partial<AnyRPCMiddlewaresOption>;
 }
 
 export interface AnyRPCPlugin {
     name: string;
 
-    setup(): PromiseLike<void>;
+    setup?: () => PromiseLike<void>;
 
-    preCall: () => PromiseLike<void>;
-    postCall: () => PromiseLike<void>;
+    preCall?: () => PromiseLike<void>;
+    postCall?: () => PromiseLike<void>;
+}
+
+export function definePlugin(plugin: AnyRPCPlugin): AnyRPCPlugin {
+    return plugin;
 }
 
 export interface AnyRPCMiddlewaresOption extends AnyRPCBaseOption {

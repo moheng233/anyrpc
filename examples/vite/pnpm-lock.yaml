@@ -841,9 +841,6 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hookable@5.5.3:
-    resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
-
   http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
     engines: {node: '>= 0.8'}
@@ -1371,7 +1368,6 @@ snapshots:
   '@anyrpc/core@file:../..(typia@6.10.3(typescript@5.6.2))(vite@5.4.8(@types/node@22.7.0))':
     dependencies:
       defu: 6.1.4
-      hookable: 5.5.3
       ofetch: 1.4.0
       pathe: 1.1.2
       pkg-types: 1.2.0
@@ -2045,8 +2041,6 @@ snapshots:
   hasown@2.0.2:
     dependencies:
       function-bind: 1.1.2
-
-  hookable@5.5.3: {}
 
   http-errors@2.0.0:
     dependencies:
