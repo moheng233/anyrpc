@@ -18,7 +18,9 @@ export default defineConfig({
         },
         inspect(),
         anyrpc({
-            enableDevMiddlewares: true
+            middlewares: {
+                enable: true
+            }
         }),
     ],
     build: { target: "esnext" },
