@@ -5,6 +5,7 @@ import typedocSidebar from '../api/typedoc-sidebar.json';
 export default defineConfig({
     title: "AnyRPC Docs",
     description: "AnyRPC",
+    base: "anyrpc",
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
         nav: [
