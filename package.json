@@ -1,9 +1,9 @@
 {
 	"name": "@anyrpc/core",
-	"version": "0.0.2",
+	"version": "0.0.3",
 	"description": "",
 	"type": "module",
-    "packageManager": "pnpm@9.11.0",
+	"packageManager": "pnpm@9.11.0",
 	"scripts": {
 		"build": "tsc -b",
 		"watch": "tsc -b -w",
@@ -13,9 +13,9 @@
 		"docs:build": "vitepress build docs",
 		"prepare": "husky"
 	},
-    "lint-staged": {
-        "src/**/*.ts": "eslint"
-    },
+	"lint-staged": {
+		"src/**/*.ts": "eslint"
+	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
