@@ -29,4 +29,4 @@ export default function () {
 
 ## Defined in
 
-server/middlewares.d.ts:17
+server/middlewares.d.ts:18

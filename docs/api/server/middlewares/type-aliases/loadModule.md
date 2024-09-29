@@ -2,7 +2,7 @@
 
 # Type Alias: loadModule()
 
-> **loadModule**: (`url`) => `Promise`\<`Record`\<`string`, `any`\>\>
+> **loadModule**: (`url`) => `Promise`\<`Record`\<`string`, [`RPCFunctionWithHelper`](../../type-aliases/RPCFunctionWithHelper.md) \| [`RPCSSEFunctionWithHelper`](../../type-aliases/RPCSSEFunctionWithHelper.md)\>\>
 
 ## Parameters
 
@@ -10,8 +10,8 @@
 
 ## Returns
 
-`Promise`\<`Record`\<`string`, `any`\>\>
+`Promise`\<`Record`\<`string`, [`RPCFunctionWithHelper`](../../type-aliases/RPCFunctionWithHelper.md) \| [`RPCSSEFunctionWithHelper`](../../type-aliases/RPCSSEFunctionWithHelper.md)\>\>
 
 ## Defined in
 
-server/middlewares.d.ts:5
+server/middlewares.d.ts:6

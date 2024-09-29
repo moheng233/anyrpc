@@ -16,4 +16,4 @@
 
 ## Defined in
 
-server/middlewares.d.ts:4
+server/middlewares.d.ts:5
