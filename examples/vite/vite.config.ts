@@ -1,6 +1,5 @@
-import { join } from "node:path";
-
 import anyrpc from "@anyrpc/core/vite";
+import { join } from "node:path";
 import { defineConfig } from "vite";
 import inspect from "vite-plugin-inspect";
 
