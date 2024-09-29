@@ -7,11 +7,14 @@
 		"build": "tsc -b",
 		"watch": "tsc -b -w",
 		"prepublish": "pnpm build",
-        
-        "predocs": "typedoc",
-        "docs:dev": "vitepress dev docs",
-        "docs:build": "vitepress build docs"
+		"predocs": "typedoc",
+		"docs:dev": "vitepress dev docs",
+		"docs:build": "vitepress build docs",
+		"prepare": "husky"
 	},
+    "lint-staged": {
+        "src/**/*.ts": "eslint"
+    },
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
@@ -20,10 +23,12 @@
 		"@eslint/js": "^9.11.1",
 		"@stylistic/eslint-plugin": "^2.8.0",
 		"@types/eslint__js": "^8.42.3",
-		"@types/node": "^22.7.2",
+		"@types/node": "^22.7.4",
 		"automd": "^0.3.8",
 		"eslint": "^9.11.1",
 		"eslint-plugin-perfectionist": "^3.7.0",
+		"husky": "^9.1.6",
+		"lint-staged": "^15.2.10",
 		"typedoc": "^0.26.7",
 		"typedoc-plugin-markdown": "^4.2.8",
 		"typedoc-vitepress-theme": "^1.0.1",
@@ -36,6 +41,7 @@
 		"ofetch": "^1.4.0",
 		"pathe": "^1.1.2",
 		"pkg-types": "^1.2.0",
+		"reflect-metadata": "^0.2.2",
 		"ts-morph": "^23.0.0",
 		"ufo": "^1.5.4",
 		"unctx": "^2.3.1"
